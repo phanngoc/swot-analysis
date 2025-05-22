@@ -1,0 +1,9 @@
+langchain
+fastapi
+uvicorn
+sqlmodel
+psycopg2-binary
+python-dotenv
+pydantic
+openai
+langchain-openai
