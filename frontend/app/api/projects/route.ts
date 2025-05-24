@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import { validateProjectSaveData } from '@/lib/validations';
 
 // Get the Python backend URL from environment variables or use a default
 const PYTHON_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -81,21 +80,7 @@ export async function POST(request: NextRequest) {
   try {
     // Parse the incoming request body
     const requestBody = await request.json();
-    
-    // Add specific validation for decision type
-    if (!requestBody.project?.decision_type) {
-      return NextResponse.json({
-        error: 'Loại quyết định là bắt buộc'
-      }, { status: 400 });
-    }
-
-    // Validate project data before saving
-    const validationResult = validateProjectSaveData(requestBody);
-    if (!validationResult.valid) {
-      return NextResponse.json({
-        error: validationResult.error || 'Dữ liệu dự án không hợp lệ'
-      }, { status: 400 });
-    }
+    console.log('Nextjs:server:Request body:', requestBody);
     
     // Forward the request to the Python backend
     const response = await axios.post(

@@ -42,7 +42,7 @@ export default function AnalysisPage() {
     };
 
     loadProjectData();
-  }, [projectId, loadProject, resetState]);
+  }, [projectId, resetState]);
 
   // Check if we have any analysis data
   const hasAnalysisData = Object.values(analysis).some(arr => arr.length > 0);

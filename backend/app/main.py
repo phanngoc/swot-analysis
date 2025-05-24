@@ -191,7 +191,7 @@ def generate_swot_analysis(project_data: Dict[str, Any]) -> Dict[str, List[Dict[
         print(e)
         # Fallback with dummy data
         return {
-            "strengths": [
+            "strength": [
                 {"content": "Strong management team", "impact": 4, "priority": "high", "category": "strength"},
                 {"content": "Innovative product", "impact": 5, "priority": "high", "category": "strength"},
                 {"content": "Cost-effective operations", "impact": 3, "priority": "medium", "category": "strength"}
@@ -406,13 +406,12 @@ def get_project(project_id: str, session: Session = Depends(get_session)):
         
         # Get SWOT items
         swot_items = session.exec(select(SWOTItem).where(SWOTItem.project_id == project_id)).all()
-        
         # Organize items by category
         analysis = {
-            "strengths": [],
-            "weaknesses": [],
-            "opportunities": [],
-            "threats": []
+            "strength": [],
+            "weakness": [],
+            "opportunity": [],
+            "threat": []
         }
         
         for item in swot_items:
@@ -424,7 +423,14 @@ def get_project(project_id: str, session: Session = Depends(get_session)):
                 "category": item.category
             }
             analysis[item.category].append(item_dict)
-        
+        print('analysis:', analysis)
+
+        analysis = {
+            "strengths": analysis["strength"],
+            "weaknesses": analysis["weakness"],
+            "opportunities": analysis["opportunity"],
+            "threats": analysis["threat"]
+        }
         # Get strategies
         strategies_items = session.exec(select(Strategy).where(Strategy.project_id == project_id)).all()
         
@@ -438,16 +444,18 @@ def get_project(project_id: str, session: Session = Depends(get_session)):
         
         for strategy in strategies_items:
             strategies[strategy.type].append(strategy.content)
-        
+        print('strategies:', strategies)
         return {
             "project": project,
             "analysis": analysis,
             "strategies": strategies
         }
         
-    except HTTPException:
+    except HTTPException as http_exc:
+        print(f"HTTPException:", http_exc)
         raise
     except Exception as e:
+        print("Exception:", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving project: {str(e)}"

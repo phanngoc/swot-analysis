@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import { validateProjectData } from '@/lib/validations'; // Changed from validateSWOTData
 
 // Get the Python backend URL from environment variables or use a default
 const PYTHON_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
