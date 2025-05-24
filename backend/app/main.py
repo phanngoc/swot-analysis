@@ -335,7 +335,7 @@ def health_check():
 @app.post("/api/swot/analyze", response_model=SWOTAnalysisResponse)
 def analyze_swot(request: SWOTAnalysisRequest):
     """Generate SWOT analysis based on project information"""
-    project_dict = request.project.dict()
+    project_dict = request.project.model_dump()
     analysis = generate_swot_analysis(project_dict)
 
 
@@ -344,7 +344,7 @@ def analyze_swot(request: SWOTAnalysisRequest):
 @app.post("/api/swot/strategies", response_model=SWOTStrategiesResponse)
 def generate_strategies(request: SWOTStrategiesRequest):
     """Generate strategies based on SWOT analysis"""
-    analysis_dict = request.dict()
+    analysis_dict = request.model_dump()
     strategies = generate_swot_strategies(analysis_dict)
     return strategies
 

@@ -14,15 +14,6 @@ export async function POST(request: NextRequest) {
     // Parse the incoming request body
     const requestBody = await request.json();
     
-    // Validate SWOT data
-    const validationResult = validateProjectData(requestBody); // Changed from validateSWOTData
-    if (!validationResult.valid) {
-      return NextResponse.json(
-        { error: validationResult.error || 'Dữ liệu phân tích SWOT không hợp lệ' },
-        { status: 400 }
-      );
-    }
-    
     // Forward the request to the Python backend with timeout
     const response = await axios.post(
       `${PYTHON_API_URL}/api/swot/strategies`, 
