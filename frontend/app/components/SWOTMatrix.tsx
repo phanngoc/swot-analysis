@@ -21,7 +21,7 @@ type DroppableProvided = {
 type DraggableProvided = {
   innerRef: (element: HTMLElement | null) => void;
   draggableProps: Record<string, any>;
-  dragHandleProps?: Record<string, any>;
+  dragHandleProps?: Record<string, any> | null;
 };
 
 type DropResult = {
@@ -343,10 +343,10 @@ export default function SWOTMatrix() {
                       </p>
                     ) : (
                       analysis.strengths.map((item, index) => (
-                        <Draggable key={`strength-${item.id}`} draggableId={item.id} index={index}>
+                        <Draggable key={`strength-${index}`} draggableId={`strength-${index}`} index={index}>
                           {(provided: DraggableProvided) => (
                             <div
-                              key={item.id} // Added key here as well
+                              key={`strength-${index}`} // Added key here as well
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
@@ -381,10 +381,10 @@ export default function SWOTMatrix() {
                       </p>
                     ) : (
                       analysis.weaknesses.map((item, index) => (
-                        <Draggable key={`weakness-${item.id}`} draggableId={item.id} index={index}>
+                        <Draggable key={`weakness-${index}`} draggableId={`weakness-${index}`} index={index}>
                           {(provided: DraggableProvided) => (
                             <div
-                              key={item.id} // Added key here as well
+                              key={`weakness-${index}`} // Added key here as well
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
@@ -419,10 +419,10 @@ export default function SWOTMatrix() {
                       </p>
                     ) : (
                       analysis.opportunities.map((item, index) => (
-                        <Draggable key={`opportunity-${item.id}`} draggableId={item.id} index={index}>
+                        <Draggable key={`opportunity-${index}`} draggableId={`opportunity-${index}`} index={index}>
                           {(provided: DraggableProvided) => (
                             <div
-                              key={item.id} // Added key here as well
+                              key={`opportunity-${index}`} // Added key here as well
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
@@ -457,10 +457,10 @@ export default function SWOTMatrix() {
                       </p>
                     ) : (
                       analysis.threats.map((item, index) => (
-                        <Draggable key={`threat-${item.id}`} draggableId={item.id} index={index}>
+                        <Draggable key={`threat-${index}`} draggableId={`threat-${index}`} index={index}>
                           {(provided: DraggableProvided) => (
                             <div
-                              key={item.id} // Added key here as well
+                              key={`threat-${index}`} // Added key here as well
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
