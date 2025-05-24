@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import { validateSWOTData } from '@/lib/validations';
+import { validateProjectData } from '@/lib/validations'; // Changed from validateSWOTData
 
 // Get the Python backend URL from environment variables or use a default
 const PYTHON_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const requestBody = await request.json();
     
     // Validate SWOT data
-    const validationResult = validateSWOTData(requestBody);
+    const validationResult = validateProjectData(requestBody); // Changed from validateSWOTData
     if (!validationResult.valid) {
       return NextResponse.json(
         { error: validationResult.error || 'Dữ liệu phân tích SWOT không hợp lệ' },

@@ -93,8 +93,8 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
     title: 'Bán xôi ',
     description: 'bán xôi buổi sáng ở Ngã Tư Hòa Xuân',
     goals: ["Có thu nhập 10 triệu 1 tháng", "Linh hoạt trong việc làm"],
-    industry: 'Thực phẩm',
-    stage: 'Khởi nghiệp',
+    industry: 'Bán lẻ',
+    stage: 'Ý tưởng',
     decisionType: "Chiến lược",
   },
   analysis: {
