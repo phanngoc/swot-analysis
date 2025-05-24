@@ -1,18 +1,44 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
-import { ChevronDown, ChevronUp, Trash2, Edit, Plus } from 'lucide-react';
-import useSWOTStore, { SWOTItem } from '../store/swot-store';
-import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
 import { Input } from './ui/input';
+import { Edit, Trash2, Plus } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { SWOTItem } from '../store/swot-store';
+import { useSWOTWithToast } from './hooks/use-swot-with-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
+// Add types for DnD
+type DroppableProvided = {
+  innerRef: (element: HTMLElement | null) => void;
+  droppableProps: Record<string, any>;
+  placeholder?: React.ReactNode;
+};
+
+type DraggableProvided = {
+  innerRef: (element: HTMLElement | null) => void;
+  draggableProps: Record<string, any>;
+  dragHandleProps?: Record<string, any>;
+};
+
+type DropResult = {
+  draggableId: string;
+  type: string;
+  source: {
+    droppableId: string;
+    index: number;
+  };
+  destination?: {
+    droppableId: string;
+    index: number;
+  };
+};
+
 export default function SWOTMatrix() {
-  const { analysis, addItem, removeItem, updateItem, moveItem, generateStrategies } = useSWOTStore();
+  const { analysis, addItem, removeItem, updateItem, moveItem, generateStrategies } = useSWOTWithToast();
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [newItem, setNewItem] = useState<Omit<SWOTItem, 'id'>>({
     content: '',
@@ -46,7 +72,7 @@ export default function SWOTMatrix() {
     removeItem(id);
   };
 
-  const handleDragEnd = (result: any) => {
+  const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
 
     const { source, destination, draggableId } = result;
@@ -308,8 +334,8 @@ export default function SWOTMatrix() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4">
-              <Droppable droppableId="strengths">
-                {(provided) => (
+              <Droppable droppableId="strengths" type="SWOT-ITEM">
+                {(provided: DroppableProvided) => (
                   <div {...provided.droppableProps} ref={provided.innerRef}>
                     {analysis.strengths.length === 0 ? (
                       <p className="text-muted-foreground text-center py-4">
@@ -318,7 +344,7 @@ export default function SWOTMatrix() {
                     ) : (
                       analysis.strengths.map((item, index) => (
                         <Draggable key={item.id} draggableId={item.id} index={index}>
-                          {(provided) => (
+                          {(provided: DraggableProvided) => (
                             <div
                               ref={provided.innerRef}
                               {...provided.draggableProps}
@@ -345,8 +371,8 @@ export default function SWOTMatrix() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4">
-              <Droppable droppableId="weaknesses">
-                {(provided) => (
+              <Droppable droppableId="weaknesses" type="SWOT-ITEM">
+                {(provided: DroppableProvided) => (
                   <div {...provided.droppableProps} ref={provided.innerRef}>
                     {analysis.weaknesses.length === 0 ? (
                       <p className="text-muted-foreground text-center py-4">
@@ -355,7 +381,7 @@ export default function SWOTMatrix() {
                     ) : (
                       analysis.weaknesses.map((item, index) => (
                         <Draggable key={item.id} draggableId={item.id} index={index}>
-                          {(provided) => (
+                          {(provided: DraggableProvided) => (
                             <div
                               ref={provided.innerRef}
                               {...provided.draggableProps}
@@ -382,8 +408,8 @@ export default function SWOTMatrix() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4">
-              <Droppable droppableId="opportunities">
-                {(provided) => (
+              <Droppable droppableId="opportunities" type="SWOT-ITEM">
+                {(provided: DroppableProvided) => (
                   <div {...provided.droppableProps} ref={provided.innerRef}>
                     {analysis.opportunities.length === 0 ? (
                       <p className="text-muted-foreground text-center py-4">
@@ -392,7 +418,7 @@ export default function SWOTMatrix() {
                     ) : (
                       analysis.opportunities.map((item, index) => (
                         <Draggable key={item.id} draggableId={item.id} index={index}>
-                          {(provided) => (
+                          {(provided: DraggableProvided) => (
                             <div
                               ref={provided.innerRef}
                               {...provided.draggableProps}
@@ -419,8 +445,8 @@ export default function SWOTMatrix() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4">
-              <Droppable droppableId="threats">
-                {(provided) => (
+              <Droppable droppableId="threats" type="SWOT-ITEM">
+                {(provided: DroppableProvided) => (
                   <div {...provided.droppableProps} ref={provided.innerRef}>
                     {analysis.threats.length === 0 ? (
                       <p className="text-muted-foreground text-center py-4">
@@ -429,7 +455,7 @@ export default function SWOTMatrix() {
                     ) : (
                       analysis.threats.map((item, index) => (
                         <Draggable key={item.id} draggableId={item.id} index={index}>
-                          {(provided) => (
+                          {(provided: DraggableProvided) => (
                             <div
                               ref={provided.innerRef}
                               {...provided.draggableProps}

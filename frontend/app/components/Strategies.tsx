@@ -1,11 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Download, Share2 } from 'lucide-react';
-import useSWOTStore from '../store/swot-store';
+import { Download, Share2, Save } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useSWOTWithToast } from './hooks/use-swot-with-toast';
 
 const StrategyCard = ({
   title,
@@ -41,11 +43,39 @@ const StrategyCard = ({
 };
 
 export default function Strategies() {
-  const { strategies, analysis, project } = useSWOTStore();
+  const { strategies, analysis, project, generateStrategies, saveProject, loading } = useSWOTWithToast();
+  const router = useRouter();
 
   // Check if we have strategies and analysis data
   const hasStrategies = Object.values(strategies).some(arr => arr.length > 0);
   const hasAnalysisData = Object.values(analysis).some(arr => arr.length > 0);
+  
+  // State for tracking saving operation status
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Handle saving the project
+  const handleSaveProject = async () => {
+    try {
+      setIsSaving(true);
+      setSaveError(null);
+      const projectId = await saveProject();
+      
+      // Show success notification
+      alert(`Project saved successfully! ID: ${projectId}`);
+      
+      // Redirect to the projects page after a short delay
+      setTimeout(() => {
+        router.push('/projects');
+      }, 1500);
+    } catch (error) {
+      console.error('Error saving project:', error);
+      setSaveError(typeof error === 'string' ? error : 'Failed to save project. Please try again.');
+      alert('Failed to save project. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Icons for each strategy quadrant
   const soIcon = <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold">S</div>;
@@ -79,10 +109,19 @@ export default function Strategies() {
           </CardDescription>
         </CardHeader>
         <CardContent className="text-center py-8">
-          <p>Đang tạo chiến lược...</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            (Trong ứng dụng thực tế, các chiến lược sẽ được tạo bởi AI dựa trên phân tích SWOT)
-          </p>
+          {loading ? (
+            <p>Đang tạo chiến lược...</p>
+          ) : (
+            <div>
+              <p>Sẵn sàng tạo chiến lược dựa trên phân tích SWOT của bạn</p>
+              <Button 
+                onClick={generateStrategies} 
+                className="mt-4 bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                Tạo chiến lược
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -180,15 +219,26 @@ export default function Strategies() {
         
         <Separator />
         
-        <CardFooter className="flex justify-end space-x-4 p-4">
-          <Button variant="outline" className="gap-2">
-            <Download size={16} />
-            Tải xuống PDF
+        <CardFooter className="flex justify-between space-x-4 p-4">
+          <Button 
+            variant="default" 
+            className="gap-2 bg-blue-500 hover:bg-blue-600 text-white"
+            onClick={handleSaveProject}
+            disabled={isSaving}
+          >
+            {isSaving ? 'Đang lưu...' : 'Lưu dự án'}
+            {saveError && <span className="text-red-200 ml-2">⚠️</span>}
           </Button>
-          <Button variant="secondary" className="gap-2">
-            <Share2 size={16} />
-            Chia sẻ
-          </Button>
+          <div className="flex space-x-4">
+            <Button variant="outline" className="gap-2">
+              <Download size={16} />
+              Tải xuống PDF
+            </Button>
+            <Button variant="secondary" className="gap-2">
+              <Share2 size={16} />
+              Chia sẻ
+            </Button>
+          </div>
         </CardFooter>
       </Card>
     </div>

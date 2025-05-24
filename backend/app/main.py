@@ -178,9 +178,17 @@ def generate_swot_analysis(project_data: Dict[str, Any]) -> Dict[str, List[Dict[
     # Execute chain
     try:
         result = chain.invoke(project_data)
+        result = result.strip()
+        if result.startswith("```json"):
+            result = result[len("```json"):].strip()
+        if result.endswith("```"):
+            result = result[:-3].strip()
+
+        print('Result:generate_swot_analysis:', result)
         return json.loads(result)
     except Exception as e:
         print(f"Error generating SWOT analysis: {e}")
+        print(e)
         # Fallback with dummy data
         return {
             "strengths": [
@@ -264,6 +272,13 @@ def generate_swot_strategies(analysis: Dict[str, List[Dict[str, Any]]]) -> Dict[
             "opportunities": opportunities,
             "threats": threats
         })
+        # Remove any leading/trailing whitespace and trim code block markers if present
+        result = result.strip()
+        if result.startswith("```json"):
+            result = result[len("```json"):].strip()
+        if result.endswith("```"):
+            result = result[:-3].strip()
+        print('Result:generate_swot_strategies:', result)
         return json.loads(result)
     except Exception as e:
         print(f"Error generating SWOT strategies: {e}")
@@ -296,11 +311,34 @@ def generate_swot_strategies(analysis: Dict[str, List[Dict[str, Any]]]) -> Dict[
 def read_root():
     return {"message": "Welcome to SWOT Analysis API"}
 
+@app.get("/api/health")
+def health_check():
+    """Health check endpoint for monitoring and Docker healthchecks"""
+    try:
+        # Check database connection
+        with Session(engine) as session:
+            session.exec("SELECT 1").first()
+        
+        return {
+            "status": "healthy",
+            "database": "connected",
+            "api": "running",
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }, 500
+
 @app.post("/api/swot/analyze", response_model=SWOTAnalysisResponse)
 def analyze_swot(request: SWOTAnalysisRequest):
     """Generate SWOT analysis based on project information"""
     project_dict = request.project.dict()
     analysis = generate_swot_analysis(project_dict)
+
+
     return analysis
 
 @app.post("/api/swot/strategies", response_model=SWOTStrategiesResponse)

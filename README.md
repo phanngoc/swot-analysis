@@ -26,6 +26,9 @@ chmod +x setup.sh
 ./setup.sh
 
 # Follow the prompts to add your OpenAI API key
+
+# Start the application
+docker-compose up
 ```
 
 Visit http://localhost:3000 in your browser to use the application!
@@ -33,11 +36,11 @@ Visit http://localhost:3000 in your browser to use the application!
 ## Tech Stack
 
 ### Frontend
-- ReactJS + TypeScript
+- Next.js 14 + TypeScript
 - TailwindCSS for styling
 - Zustand for state management
 - shadcn/ui for UI components
-- react-beautiful-dnd for drag-and-drop functionality
+- API routes for backend communication
 
 ### Backend
 - FastAPI (Python)
@@ -45,10 +48,66 @@ Visit http://localhost:3000 in your browser to use the application!
 - PostgreSQL database
 - OpenAI integration via LangChain for AI analysis
 
+## Data Flow
+
+1. User submits project information in the frontend
+2. Frontend calls its API route (`/api/swot-analyze`)
+3. Frontend API route forwards the request to the Python backend
+4. Python backend uses LangChain and OpenAI to generate the SWOT analysis
+5. Results flow back to the frontend
+6. Similar flow for strategy generation and project saving
+
+## API Routes
+
+### Frontend API Routes (Next.js)
+- `/api/swot-analyze` - Generate SWOT analysis
+- `/api/swot-strategies` - Generate strategies based on SWOT analysis
+- `/api/projects` - Save or get projects
+- `/api/projects-list` - List all projects
+- `/api/projects/[id]` - Get a specific project
+
+### Backend API Routes (FastAPI)
+- `/api/swot/analyze` - Generate SWOT analysis using AI
+- `/api/swot/strategies` - Generate strategies based on SWOT analysis
+- `/api/projects` - Create or list projects
+- `/api/projects/{project_id}` - Get a specific project
+
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v16+)
+- Node.js (v18+)
+- Python (v3.9+)
+- PostgreSQL database
+- OpenAI API key
+
+### Environment Variables
+
+Create a `.env` file in the root directory with the following variables:
+
+```
+# For the backend
+DATABASE_URL=postgresql://postgres:postgres@db:5432/swot
+OPENAI_API_KEY=your_openai_api_key
+
+# For the frontend
+NEXT_PUBLIC_API_URL=http://backend:8000
+```
+
+### Running Locally
+
+1. Start the backend:
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+2. Start the frontend:
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
 - Python (3.10+)
 - PostgreSQL
 - Docker and Docker Compose (optional)

@@ -7,12 +7,12 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import useSWOTStore from '../store/swot-store';
 import { Plus, X } from 'lucide-react';
+import { useSWOTWithToast } from './hooks/use-swot-with-toast';
 
 export default function InputForm({ onSubmit }: { onSubmit: () => void }) {
   const [goal, setGoal] = useState('');
-  const { project, setProject } = useSWOTStore();
+  const { project, setProject } = useSWOTWithToast();
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -176,7 +176,12 @@ export default function InputForm({ onSubmit }: { onSubmit: () => void }) {
           </div>
         </CardContent>
         <CardFooter className="flex justify-between">
-          <Button type="submit" disabled={!project.title || !project.description}>
+          <Button 
+            type="submit" 
+            disabled={!project.title || !project.description}
+            variant="default"
+            className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-6 py-2 rounded"
+          >
             Phân tích SWOT
           </Button>
         </CardFooter>
