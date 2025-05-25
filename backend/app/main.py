@@ -336,8 +336,18 @@ def health_check():
 def analyze_swot(request: SWOTAnalysisRequest):
     """Generate SWOT analysis based on project information"""
     project_dict = request.project.model_dump()
-    analysis = generate_swot_analysis(project_dict)
+    # Save project information to the database
+    project = Project(**project_dict)
+    with Session(engine) as session:
+        session.add(project)
+        session.commit()
+        session.refresh(project)
+        project_dict["id"] = project.id
+    print('project_dict:', project_dict)
+    # Generate SWOT analysis, response thêm info project
 
+    analysis = generate_swot_analysis(project_dict)
+    # Add project ID to each SWOT item
 
     return analysis
 

@@ -77,32 +77,34 @@ export default function InputForm({ onSubmit }: { onSubmit: () => void }) {
           </div>
 
           <div className="space-y-2">
-            <Label>Mục tiêu</Label>
-            <div className="flex space-x-2">
+            <Label className="text-lg font-semibold text-gray-700">Mục tiêu</Label>
+            <div className="flex space-x-2 items-center">
               <Input
                 id="goal"
                 value={goal}
                 onChange={(e) => setGoal(e.target.value)}
                 placeholder="Thêm mục tiêu"
+                className="border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-300"
               />
-              <Button type="button" onClick={addGoal} variant="outline">
+              <Button type="button" onClick={addGoal} variant="outline" className="flex items-center space-x-1">
                 <Plus className="h-4 w-4" />
-                Thêm
+                <span>Thêm</span>
               </Button>
             </div>
 
-            <div className="mt-2">
+            <div className="mt-2 space-y-1">
               {project.goals.map((g, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between bg-muted/50 p-2 rounded-md mt-1"
+                  className="flex items-center justify-between bg-gray-100 p-2 rounded-md shadow-sm hover:bg-gray-200 transition"
                 >
-                  <span>{g}</span>
+                  <span className="text-gray-800 font-medium">{g}</span>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => removeGoal(index)}
+                    className="text-red-500 hover:text-red-700"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -122,14 +124,14 @@ export default function InputForm({ onSubmit }: { onSubmit: () => void }) {
                   <SelectValue placeholder="Chọn ngành nghề" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="technology">Công nghệ</SelectItem>
-                  <SelectItem value="finance">Tài chính</SelectItem>
-                  <SelectItem value="healthcare">Y tế</SelectItem>
-                  <SelectItem value="education">Giáo dục</SelectItem>
-                  <SelectItem value="retail">Bán lẻ</SelectItem>
-                  <SelectItem value="manufacturing">Sản xuất</SelectItem>
-                  <SelectItem value="services">Dịch vụ</SelectItem>
-                  <SelectItem value="other">Khác</SelectItem>
+                  <SelectItem value="Công nghệ">Công nghệ</SelectItem>
+                  <SelectItem value="Tài chính">Tài chính</SelectItem>
+                  <SelectItem value="Y tế">Y tế</SelectItem>
+                  <SelectItem value="Giáo dục">Giáo dục</SelectItem>
+                  <SelectItem value="Bán lẻ">Bán lẻ</SelectItem>
+                  <SelectItem value="Sản xuất">Sản xuất</SelectItem>
+                  <SelectItem value="Dịch vụ">Dịch vụ</SelectItem>
+                  <SelectItem value="Khác">Khác</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -144,12 +146,12 @@ export default function InputForm({ onSubmit }: { onSubmit: () => void }) {
                   <SelectValue placeholder="Chọn giai đoạn" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="idea">Ý tưởng</SelectItem>
-                  <SelectItem value="startup">Khởi nghiệp</SelectItem>
-                  <SelectItem value="growth">Tăng trưởng</SelectItem>
-                  <SelectItem value="mature">Trưởng thành</SelectItem>
-                  <SelectItem value="renewal">Đổi mới</SelectItem>
-                  <SelectItem value="decline">Suy thoái</SelectItem>
+                  <SelectItem value="Ý tưởng">Ý tưởng</SelectItem>
+                  <SelectItem value="Khởi nghiệp">Khởi nghiệp</SelectItem>
+                  <SelectItem value="Tăng trưởng">Tăng trưởng</SelectItem>
+                  <SelectItem value="Trưởng thành">Trưởng thành</SelectItem>
+                  <SelectItem value="Đổi mới">Đổi mới</SelectItem>
+                  <SelectItem value="Suy thoái">Suy thoái</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -164,26 +166,26 @@ export default function InputForm({ onSubmit }: { onSubmit: () => void }) {
                   <SelectValue placeholder="Chọn loại quyết định" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="strategic">Chiến lược</SelectItem>
-                  <SelectItem value="tactical">Chiến thuật</SelectItem>
-                  <SelectItem value="operational">Vận hành</SelectItem>
-                  <SelectItem value="investment">Đầu tư</SelectItem>
-                  <SelectItem value="organizational">Tổ chức</SelectItem>
-                  <SelectItem value="product">Sản phẩm</SelectItem>
+                  <SelectItem value="Chiến lược">Chiến lược</SelectItem>
+                  <SelectItem value="Chiến thuật">Chiến thuật</SelectItem>
+                  <SelectItem value="Vận hành">Vận hành</SelectItem>
+                  <SelectItem value="Đầu tư">Đầu tư</SelectItem>
+                  <SelectItem value="Tổ chức">Tổ chức</SelectItem>
+                  <SelectItem value="Sản phẩm">Sản phẩm</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
         </CardContent>
         <CardFooter className="flex justify-between">
-          <Button 
+            <Button 
             type="submit" 
             disabled={!project.title || !project.description}
             variant="default"
-            className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-6 py-2 rounded"
-          >
+            className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-medium px-6 py-2 rounded"
+            >
             Phân tích SWOT
-          </Button>
+            </Button>
         </CardFooter>
       </Card>
     </form>
