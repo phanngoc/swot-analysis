@@ -64,10 +64,8 @@ export default function Strategies() {
       // Show success notification
       alert(`Project saved successfully! ID: ${projectId}`);
       
-      // Redirect to the projects page after a short delay
-      setTimeout(() => {
-        router.push('/projects');
-      }, 1500);
+      // Redirect to the analysis page for this project
+      router.push(`/projects/${projectId}/analysis`);
     } catch (error) {
       console.error('Error saving project:', error);
       setSaveError(typeof error === 'string' ? error : 'Failed to save project. Please try again.');

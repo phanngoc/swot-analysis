@@ -251,6 +251,7 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
         },
       });
       
+      console.log("SWOT analysis response:", response.data);
       set({
         analysis: response.data,
         loading: false,

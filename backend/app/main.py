@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from openai import project
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 from typing import List, Optional, Dict, Any
 import os
@@ -8,7 +9,7 @@ import uuid
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import json
-from sqlalchemy import JSON, Column
+from sqlalchemy import JSON, Column, desc, text
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import StrOutputParser
@@ -83,6 +84,7 @@ class SWOTAnalysisResponse(BaseModel):
     weaknesses: List[Dict[str, Any]]
     opportunities: List[Dict[str, Any]]
     threats: List[Dict[str, Any]]
+    project: ProjectRead
 
 class SWOTStrategiesRequest(BaseModel):
     strengths: List[Dict[str, Any]]
@@ -342,13 +344,16 @@ def analyze_swot(request: SWOTAnalysisRequest):
         session.add(project)
         session.commit()
         session.refresh(project)
-        project_dict["id"] = project.id
-    print('project_dict:', project_dict)
+        # Use model_dump to get all fields, including created_at and updated_at
+        project_full_dict = project.model_dump()
+    print('project_dict:', project_full_dict)
     # Generate SWOT analysis, response thêm info project
 
-    analysis = generate_swot_analysis(project_dict)
-    # Add project ID to each SWOT item
-
+    analysis = generate_swot_analysis(project_full_dict)
+    print('analysis:', analysis)
+    # Set project as a dict, not a list
+    analysis['project'] = project_full_dict
+    print('analysis:', analysis)
     return analysis
 
 @app.post("/api/swot/strategies", response_model=SWOTStrategiesResponse)
@@ -474,5 +479,5 @@ def get_project(project_id: str, session: Session = Depends(get_session)):
 @app.get("/api/projects", response_model=List[ProjectRead])
 def list_projects(session: Session = Depends(get_session)):
     """List all projects"""
-    projects = session.exec(select(Project).order_by(Project.created_at.desc())).all()
+    projects = session.exec(select(Project).order_by(desc(text('created_at')))).all()
     return projects
