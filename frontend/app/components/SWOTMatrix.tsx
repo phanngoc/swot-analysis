@@ -318,7 +318,12 @@ export default function SWOTMatrix() {
           <Button variant="outline" onClick={() => setIsAddingItem(true)}>
             <Plus className="mr-1 h-4 w-4" /> Thêm mục
           </Button>
-          <Button onClick={() => generateStrategies()}>Tạo chiến lược</Button>
+          <Button
+            onClick={() => generateStrategies()}
+            className="border border-blue-700 bg-blue-700 text-white hover:bg-blue-800"
+          >
+            Tạo chiến lược
+          </Button>
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from openai import project
 from sqlmodel import Field, Session, SQLModel, create_engine, select
@@ -9,7 +9,7 @@ import uuid
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import json
-from sqlalchemy import JSON, Column, desc, text
+from sqlalchemy import JSON, Column, desc, text, delete # Added delete
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import StrOutputParser
@@ -441,10 +441,11 @@ def get_project(project_id: str, session: Session = Depends(get_session)):
         print('analysis:', analysis)
 
         analysis = {
-            "strengths": analysis["strength"],
-            "weaknesses": analysis["weakness"],
-            "opportunities": analysis["opportunity"],
-            "threats": analysis["threat"]
+            "strengths": analysis.get("strength", []),
+            "weaknesses": analysis.get("weakness", []),
+            "opportunities": analysis.get("opportunity", []),
+            "threats": analysis.get("threat", []),
+            "project": project.model_dump()  # Add project details to analysis
         }
         # Get strategies
         strategies_items = session.exec(select(Strategy).where(Strategy.project_id == project_id)).all()
@@ -481,3 +482,45 @@ def list_projects(session: Session = Depends(get_session)):
     """List all projects"""
     projects = session.exec(select(Project).order_by(desc(text('created_at')))).all()
     return projects
+
+@app.delete("/api/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_project(project_id: str, session: Session = Depends(get_session)):
+    """Delete a project and its associated SWOT items and strategies"""
+    try:
+        project = session.exec(select(Project).where(Project.id == project_id)).first()
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found"
+            )
+
+        # Delete associated SWOT items
+        swot_items_to_delete = session.exec(select(SWOTItem).where(SWOTItem.project_id == project_id)).all()
+        for item in swot_items_to_delete:
+            session.delete(item)
+
+        # Delete associated strategies
+        strategies_to_delete = session.exec(select(Strategy).where(Strategy.project_id == project_id)).all()
+        for strategy_item in strategies_to_delete:
+            session.delete(strategy_item)
+        
+        # Flush the session to ensure child deletions are processed before parent deletion
+        session.flush()
+
+        # Delete the project itself
+        session.delete(project)
+        
+        session.commit()
+        # FastAPI automatically handles 204 No Content for functions returning None or with no return statement
+    
+    except HTTPException as http_exc:
+        print(f"HTTPException:", http_exc) # Keep or improve logging
+        session.rollback()
+        raise http_exc
+    except Exception as e:
+        session.rollback()
+        print("Exception:", e) # Keep or improve logging
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting project: {str(e)}"
+        )

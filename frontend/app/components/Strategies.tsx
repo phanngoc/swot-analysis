@@ -7,7 +7,7 @@ import { Separator } from './ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Download, Share2, Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useSWOTWithToast } from './hooks/use-swot-with-toast';
+import useSWOTStore from '../store/swot-store'; // Added import
 
 const StrategyCard = ({
   title,
@@ -43,7 +43,28 @@ const StrategyCard = ({
 };
 
 export default function Strategies() {
-  const { strategies, analysis, project, generateStrategies, saveProject, loading } = useSWOTWithToast();
+  // const { strategies, analysis, project, generateStrategies, saveProject, loading } = useSWOTWithToast();
+  // Replaced useSWOTWithToast with useSWOTStore to access global state
+  const { 
+    strategies, 
+    analysis, 
+    project, 
+    generateStrategies, 
+    saveProject, 
+    loading,
+    error, // Added error state
+    projectId // Added projectId from store
+  } = useSWOTStore(state => ({
+    strategies: state.strategies,
+    analysis: state.analysis,
+    project: state.project,
+    generateStrategies: state.generateStrategies,
+    saveProject: state.saveProject,
+    loading: state.loading,
+    error: state.error,
+    projectId: state.currentProjectId, // Assuming currentProjectId is in your store
+  }));
+
   const router = useRouter();
 
   // Check if we have strategies and analysis data
@@ -59,7 +80,11 @@ export default function Strategies() {
     try {
       setIsSaving(true);
       setSaveError(null);
-      const projectId = await saveProject();
+      // const projectId = await saveProject(); // projectId is now from the store
+      if (!projectId) {
+        throw new Error("Project ID is not available. Cannot save.");
+      }
+      await saveProject(projectId); // Pass projectId to saveProject
       
       // Show success notification
       alert(`Project saved successfully! ID: ${projectId}`);
@@ -81,6 +106,57 @@ export default function Strategies() {
   const stIcon = <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold">S</div>;
   const wtIcon = <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-bold">W</div>;
   
+  if (loading && !project) { // Show loading only if project is not yet loaded
+    return (
+      <Card className="w-full max-w-3xl mx-auto">
+        <CardHeader>
+          <CardTitle>Đang tải dữ liệu dự án...</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center py-8">
+          <p>Vui lòng đợi...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) { // Display error if loading failed
+    return (
+      <Card className="w-full max-w-3xl mx-auto">
+        <CardHeader>
+          <CardTitle>Lỗi</CardTitle>
+          <CardDescription>
+            Không thể tải dữ liệu dự án.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-center py-8">
+          <p className="text-red-500">{error}</p>
+          <Button onClick={() => router.push('/projects')} className="mt-4">
+            Quay lại danh sách dự án
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (!project && !loading) { // If no project and not loading, means project not found or not selected
+    return (
+      <Card className="w-full max-w-3xl mx-auto">
+        <CardHeader>
+          <CardTitle>Không tìm thấy dự án</CardTitle>
+          <CardDescription>
+            Vui lòng chọn một dự án hoặc tạo dự án mới.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-center py-8">
+          <Button onClick={() => router.push('/projects')} className="mt-4">
+            Đi đến danh sách dự án
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+
   if (!hasAnalysisData) {
     return (
       <Card className="w-full max-w-3xl mx-auto">

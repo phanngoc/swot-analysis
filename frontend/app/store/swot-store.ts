@@ -78,11 +78,7 @@ const handleError = (error: any, defaultMessage: string) => {
   }
 
   const { toast } = useToast();
-  toast({
-    title: "Có lỗi xảy ra",
-    description: errorMessage,
-    variant: "destructive",
-  });
+  toast(errorMessage, "destructive");
 
   return { errorMessage, errorType };
 };
@@ -134,13 +130,19 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
       ...item,
       id: Math.random().toString(36).substring(2, 9),
     };
-    
     set((state) => {
-      const category = item.category;
+      // Map singular to plural
+      const categoryMap = {
+        strength: 'strengths',
+        weakness: 'weaknesses',
+        opportunity: 'opportunities',
+        threat: 'threats',
+      } as const;
+      const pluralCategory = categoryMap[item.category];
       return {
         analysis: {
           ...state.analysis,
-          [category]: [...state.analysis[category], newItem],
+          [pluralCategory]: [...state.analysis[pluralCategory], newItem],
         },
       };
     });
@@ -148,9 +150,15 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
 
   updateItem: (item) => {
     set((state) => {
-      const category = item.category;
-      
-      // Find which category the item currently belongs to
+      // Map singular to plural
+      const categoryMap = {
+        strength: 'strengths',
+        weakness: 'weaknesses',
+        opportunity: 'opportunities',
+        threat: 'threats',
+      } as const;
+      const pluralCategory = categoryMap[item.category];
+      // Find which plural category the item currently belongs to
       let currentCategory: keyof SWOTAnalysis | null = null;
       for (const cat of ['strengths', 'weaknesses', 'opportunities', 'threats'] as const) {
         if (state.analysis[cat].some((i) => i.id === item.id)) {
@@ -158,25 +166,21 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
           break;
         }
       }
-      
       if (!currentCategory) return state;
-      
       // If category changed, remove from old category and add to new one
-      if (currentCategory !== category) {
+      if (currentCategory !== pluralCategory) {
         const updatedAnalysis = { ...state.analysis };
         updatedAnalysis[currentCategory] = updatedAnalysis[currentCategory].filter(
           (i) => i.id !== item.id
         );
-        updatedAnalysis[category] = [...updatedAnalysis[category], item];
-        
+        updatedAnalysis[pluralCategory] = [...updatedAnalysis[pluralCategory], item];
         return { analysis: updatedAnalysis };
       }
-      
       // If category is the same, just update the item
       return {
         analysis: {
           ...state.analysis,
-          [category]: state.analysis[category].map((i) =>
+          [pluralCategory]: state.analysis[pluralCategory].map((i: SWOTItem) =>
             i.id === item.id ? item : i
           ),
         },
@@ -256,23 +260,22 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
         analysis: response.data,
         loading: false,
       });
-    } catch (error: any) {
-      console.error('Error generating SWOT analysis:', error);
-      
+    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const err = error as any;
+      console.error('Error generating SWOT analysis:', err);
       // Extract meaningful error message
       let errorMessage = 'Không thể tạo phân tích SWOT. Vui lòng thử lại.';
       let errorType: 'api' | 'validation' | 'connection' | 'unknown' = 'unknown';
-      
-      if (error.response) {
+      if (err.response) {
         // Backend returned an error response
-        errorMessage = error.response.data?.error || errorMessage;
+        errorMessage = err.response.data?.error || errorMessage;
         errorType = 'api';
-      } else if (error.request) {
+      } else if (err.request) {
         // Request was made but no response received
         errorMessage = 'Không thể kết nối với máy chủ. Vui lòng kiểm tra kết nối mạng của bạn.';
         errorType = 'connection';
       }
-      
       set({
         loading: false,
         error: errorMessage,
@@ -315,23 +318,22 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
         strategies: response.data,
         loading: false,
       });
-    } catch (error: any) {
-      console.error('Error generating strategies:', error);
-      
+    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const err = error as any;
+      console.error('Error generating strategies:', err);
       // Extract meaningful error message
       let errorMessage = 'Không thể tạo chiến lược. Vui lòng thử lại.';
       let errorType: 'api' | 'validation' | 'connection' | 'unknown' = 'unknown';
-      
-      if (error.response) {
+      if (err.response) {
         // Backend returned an error response
-        errorMessage = error.response.data?.error || errorMessage;
+        errorMessage = err.response.data?.error || errorMessage;
         errorType = 'api';
-      } else if (error.request) {
+      } else if (err.request) {
         // Request was made but no response received
         errorMessage = 'Không thể kết nối với máy chủ. Vui lòng kiểm tra kết nối mạng của bạn.';
         errorType = 'connection';
       }
-      
       set({
         loading: false,
         error: errorMessage,
@@ -391,16 +393,16 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
       });
       
       return response.data.id;
-    } catch (error: any) {
-      console.error('Error saving project:', error);
-      const { errorMessage, errorType } = handleError(error, 'Không thể lưu dự án. Vui lòng thử lại.');
-      
+    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const err = error as any;
+      console.error('Error saving project:', err);
+      const { errorMessage, errorType } = handleError(err, 'Không thể lưu dự án. Vui lòng thử lại.');
       set({
         loading: false,
         error: errorMessage,
         errorType
       });
-      
       return null;
     }
   },
@@ -444,28 +446,27 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
         },
         loading: false,
       });
-    } catch (error: any) {
-      console.error('Error loading project:', error);
-      
+    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const err = error as any;
+      console.error('Error loading project:', err);
       // Extract meaningful error message
       let errorMessage = 'Không thể tải dự án. Vui lòng thử lại.';
       let errorType: 'api' | 'validation' | 'connection' | 'unknown' = 'unknown';
-      
-      if (error.response) {
+      if (err.response) {
         // Handle 404 specifically
-        if (error.response.status === 404) {
+        if (err.response.status === 404) {
           errorMessage = 'Không tìm thấy dự án. Dự án có thể đã bị xóa.';
         } else {
           // Other API errors
-          errorMessage = error.response.data?.error || errorMessage;
+          errorMessage = err.response.data?.error || errorMessage;
         }
         errorType = 'api';
-      } else if (error.request) {
+      } else if (err.request) {
         // Request was made but no response received
         errorMessage = 'Không thể kết nối với máy chủ. Vui lòng kiểm tra kết nối mạng của bạn.';
         errorType = 'connection';
       }
-      
       set({
         loading: false,
         error: errorMessage,

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, ArrowRight, Calendar, FileText } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Calendar, FileText, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import Layout from '../components/Layout';
@@ -58,6 +58,30 @@ export default function ProjectsPage() {
 
   const navigateToProject = (id: string) => {
     router.push(`/analysis?id=${id}`);
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa dự án này không? Hành động này không thể hoàn tác.')) {
+      try {
+        const response = await fetch(`/api/projects/${projectId}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) {
+          if (response.status === 204) { // Handle 204 No Content as success
+            setProjects(projects.filter(p => p.id !== projectId));
+            // Optionally show a success toast/message here
+            return;
+          }
+          throw new Error('Failed to delete project');
+        }
+        setProjects(projects.filter(p => p.id !== projectId));
+        // Optionally show a success toast/message here
+      } catch (err) {
+        console.error('Error deleting project:', err);
+        setError('Không thể xóa dự án. Vui lòng thử lại.');
+        // Optionally show an error toast/message here
+      }
+    }
   };
 
   return (
@@ -125,12 +149,21 @@ export default function ProjectsPage() {
                     </span>
                   </div>
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="flex justify-between items-center">
                   <Button
                     onClick={() => navigateToProject(project.id)}
-                    className="w-full gap-1 bg-blue-500 hover:bg-blue-600 text-white"
+                    className="flex-grow gap-1 bg-blue-500 hover:bg-blue-600 text-white mr-2"
                   >
                     Xem phân tích <ArrowRight size={16} />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleDeleteProject(project.id)}
+                    className="text-red-500 hover:bg-red-100 hover:text-red-700"
+                    aria-label="Xóa dự án"
+                  >
+                    <Trash2 size={18} />
                   </Button>
                 </CardFooter>
               </Card>
