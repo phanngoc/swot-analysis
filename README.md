@@ -2,7 +2,7 @@
 
 An interactive web application for SWOT (Strengths, Weaknesses, Opportunities, Threats) analysis powered by AI. This tool helps businesses, entrepreneurs, and project managers analyze their strategic position and make informed decisions.
 
-![SWOT Matrix](https://i.imgur.com/XqwdTK7.png)
+![GitHub Repo stars](./screenshot.png)
 
 ## Features
 
