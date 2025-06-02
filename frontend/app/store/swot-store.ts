@@ -40,8 +40,11 @@ export type SWOTState = {
     st: string[];
     wt: string[];
   };
+  currentProjectId: string | null;
   loading: boolean;
   error: string | null;
+  errorType: 'api' | 'validation' | 'connection' | 'unknown' | null;
+  lastAction: string | null;
 };
 
 export type SWOTActions = {
@@ -54,23 +57,39 @@ export type SWOTActions = {
   setStrategies: (strategies: { so: string[]; wo: string[]; st: string[]; wt: string[] }) => void;
   generateAnalysis: () => Promise<void>;
   generateStrategies: () => Promise<void>;
-  saveProject: () => Promise<void>;
+  saveProject: (projectId?: string) => Promise<void>;
   loadProject: (id: string) => Promise<void>;
   resetState: () => void;
 };
 
-// API base URL - we'll configure this properly in Next.js env
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Helper function to handle errors
+const handleError = (error: unknown, defaultMessage: string) => {
+  let errorMessage = defaultMessage;
+  let errorType: 'api' | 'validation' | 'connection' | 'unknown' = 'unknown';
+      
+  if (error && typeof error === 'object' && 'response' in error) {
+    // Backend returned an error response
+    const err = error as { response?: { data?: { error?: string } } };
+    errorMessage = err.response?.data?.error || errorMessage;
+    errorType = 'api';
+  } else if (error && typeof error === 'object' && 'request' in error) {
+    // Request was made but no response received
+    errorMessage = 'Không thể kết nối với máy chủ. Vui lòng kiểm tra kết nối mạng của bạn.';
+    errorType = 'connection';
+  }
+
+  return { errorMessage, errorType };
+};
 
 // Create the store
 const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
   project: {
-    title: '',
-    description: '',
-    goals: [],
-    industry: '',
-    stage: '',
-    decisionType: '',
+    title: 'Bán xôi ',
+    description: 'bán xôi buổi sáng ở Ngã Tư Hòa Xuân',
+    goals: ["Có thu nhập 10 triệu 1 tháng", "Linh hoạt trong việc làm"],
+    industry: 'Bán lẻ',
+    stage: 'Ý tưởng',
+    decisionType: "Chiến lược",
   },
   analysis: {
     strengths: [],
@@ -84,8 +103,11 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
     st: [],
     wt: [],
   },
+  currentProjectId: null,
   loading: false,
   error: null,
+  errorType: null,
+  lastAction: null,
 
   setProject: (project) => {
     set((state) => ({
@@ -93,6 +115,8 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
         ...state.project,
         ...project,
       },
+      error: null,
+      errorType: null,
     }));
   },
 
@@ -105,13 +129,19 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
       ...item,
       id: Math.random().toString(36).substring(2, 9),
     };
-    
     set((state) => {
-      const category = item.category;
+      // Map singular to plural
+      const categoryMap = {
+        strength: 'strengths',
+        weakness: 'weaknesses',
+        opportunity: 'opportunities',
+        threat: 'threats',
+      } as const;
+      const pluralCategory = categoryMap[item.category];
       return {
         analysis: {
           ...state.analysis,
-          [category]: [...state.analysis[category], newItem],
+          [pluralCategory]: [...state.analysis[pluralCategory], newItem],
         },
       };
     });
@@ -119,9 +149,15 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
 
   updateItem: (item) => {
     set((state) => {
-      const category = item.category;
-      
-      // Find which category the item currently belongs to
+      // Map singular to plural
+      const categoryMap = {
+        strength: 'strengths',
+        weakness: 'weaknesses',
+        opportunity: 'opportunities',
+        threat: 'threats',
+      } as const;
+      const pluralCategory = categoryMap[item.category];
+      // Find which plural category the item currently belongs to
       let currentCategory: keyof SWOTAnalysis | null = null;
       for (const cat of ['strengths', 'weaknesses', 'opportunities', 'threats'] as const) {
         if (state.analysis[cat].some((i) => i.id === item.id)) {
@@ -129,25 +165,21 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
           break;
         }
       }
-      
       if (!currentCategory) return state;
-      
       // If category changed, remove from old category and add to new one
-      if (currentCategory !== category) {
+      if (currentCategory !== pluralCategory) {
         const updatedAnalysis = { ...state.analysis };
         updatedAnalysis[currentCategory] = updatedAnalysis[currentCategory].filter(
           (i) => i.id !== item.id
         );
-        updatedAnalysis[category] = [...updatedAnalysis[category], item];
-        
+        updatedAnalysis[pluralCategory] = [...updatedAnalysis[pluralCategory], item];
         return { analysis: updatedAnalysis };
       }
-      
       // If category is the same, just update the item
       return {
         analysis: {
           ...state.analysis,
-          [category]: state.analysis[category].map((i) =>
+          [pluralCategory]: state.analysis[pluralCategory].map((i: SWOTItem) =>
             i.id === item.id ? item : i
           ),
         },
@@ -192,102 +224,209 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
 
   generateAnalysis: async () => {
     try {
-      set({ loading: true, error: null });
+      set({ 
+        loading: true, 
+        error: null, 
+        errorType: null,
+        lastAction: 'analyze'
+      });
       
-      const response = await axios.post(`${API_URL}/api/swot/analyze`, {
+      // Validate project data
+      const projectData = get().project;
+      if (!projectData.title || !projectData.description || !projectData.industry || !projectData.stage) {
+        set({
+          loading: false,
+          error: 'Vui lòng điền đầy đủ thông tin dự án trước khi phân tích.',
+          errorType: 'validation'
+        });
+        return;
+      }
+      
+      // Use the Next.js API route instead of directly calling Python backend
+      const response = await axios.post('/api/swot-analyze', {
         project: {
-          title: get().project.title,
-          description: get().project.description,
-          goals: get().project.goals,
-          industry: get().project.industry,
-          stage: get().project.stage,
-          decision_type: get().project.decisionType,
+          title: projectData.title,
+          description: projectData.description,
+          goals: projectData.goals,
+          industry: projectData.industry,
+          stage: projectData.stage,
+          decisionType: projectData.decisionType,
         },
       });
       
+      console.log("SWOT analysis response:", response.data);
       set({
         analysis: response.data,
         loading: false,
       });
     } catch (error) {
-      console.error('Error generating SWOT analysis:', error);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const err = error as any;
+      console.error('Error generating SWOT analysis:', err);
+      // Extract meaningful error message
+      let errorMessage = 'Không thể tạo phân tích SWOT. Vui lòng thử lại.';
+      let errorType: 'api' | 'validation' | 'connection' | 'unknown' = 'unknown';
+      if (err.response) {
+        // Backend returned an error response
+        errorMessage = err.response.data?.error || errorMessage;
+        errorType = 'api';
+      } else if (err.request) {
+        // Request was made but no response received
+        errorMessage = 'Không thể kết nối với máy chủ. Vui lòng kiểm tra kết nối mạng của bạn.';
+        errorType = 'connection';
+      }
       set({
         loading: false,
-        error: 'Failed to generate SWOT analysis. Please try again.',
+        error: errorMessage,
+        errorType
       });
     }
   },
 
   generateStrategies: async () => {
     try {
-      set({ loading: true, error: null });
-      
-      const response = await axios.post(`${API_URL}/api/swot/strategies`, {
-        strengths: get().analysis.strengths,
-        weaknesses: get().analysis.weaknesses,
-        opportunities: get().analysis.opportunities,
-        threats: get().analysis.threats,
+      set({ 
+        loading: true, 
+        error: null,
+        errorType: null,
+        lastAction: 'strategies'
       });
       
+      // Check if we have SWOT analysis data
+      const analysis = get().analysis;
+      const hasData = Object.values(analysis).some(items => items.length > 0);
+      
+      if (!hasData) {
+        set({
+          loading: false,
+          error: 'Cần có dữ liệu phân tích SWOT trước khi tạo chiến lược.',
+          errorType: 'validation'
+        });
+        return;
+      }
+      
+      // Use the Next.js API route instead of directly calling Python backend
+      const response = await axios.post('/api/swot-strategies', {
+        strengths: analysis.strengths,
+        weaknesses: analysis.weaknesses,
+        opportunities: analysis.opportunities,
+        threats: analysis.threats,
+      });
+      console.log('Generated strategies:', response.data);
       set({
         strategies: response.data,
         loading: false,
       });
     } catch (error) {
-      console.error('Error generating strategies:', error);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const err = error as any;
+      console.error('Error generating strategies:', err);
+      // Extract meaningful error message
+      let errorMessage = 'Không thể tạo chiến lược. Vui lòng thử lại.';
+      let errorType: 'api' | 'validation' | 'connection' | 'unknown' = 'unknown';
+      if (err.response) {
+        // Backend returned an error response
+        errorMessage = err.response.data?.error || errorMessage;
+        errorType = 'api';
+      } else if (err.request) {
+        // Request was made but no response received
+        errorMessage = 'Không thể kết nối với máy chủ. Vui lòng kiểm tra kết nối mạng của bạn.';
+        errorType = 'connection';
+      }
       set({
         loading: false,
-        error: 'Failed to generate strategies. Please try again.',
+        error: errorMessage,
+        errorType
       });
     }
   },
 
-  saveProject: async () => {
+  saveProject: async (projectId?: string) => {
     try {
-      set({ loading: true, error: null });
+      set({ 
+        loading: true, 
+        error: null,
+        errorType: null,
+        lastAction: 'save'
+      });
       
-      const response = await axios.post(`${API_URL}/api/projects`, {
+      const { project, analysis, strategies, currentProjectId } = get();
+      const idToUse = projectId || currentProjectId || project.id;
+
+      // Check for required fields
+      if (!project.title || !project.description || !project.industry || !project.stage || !project.decisionType) {
+        set({
+          loading: false,
+          error: 'Vui lòng điền đầy đủ thông tin dự án trước khi lưu.',
+          errorType: 'validation'
+        });
+        
+        handleError(new Error('Validation failed'), 'Vui lòng điền đầy đủ thông tin dự án trước khi lưu.');
+        return;
+      }
+      
+      const projectData = {
         project: {
-          title: get().project.title,
-          description: get().project.description,
-          goals: get().project.goals,
-          industry: get().project.industry,
-          stage: get().project.stage,
-          decision_type: get().project.decisionType,
+          title: project.title,
+          description: project.description,
+          goals: project.goals,
+          industry: project.industry,
+          stage: project.stage,
+          decision_type: project.decisionType,
         },
         analysis: {
-          strengths: get().analysis.strengths,
-          weaknesses: get().analysis.weaknesses,
-          opportunities: get().analysis.opportunities,
-          threats: get().analysis.threats,
+          strengths: analysis.strengths,
+          weaknesses: analysis.weaknesses,
+          opportunities: analysis.opportunities,
+          threats: analysis.threats,
         },
-        strategies: get().strategies,
-      });
+        strategies: strategies,
+      };
+
+      let response;
+      if (idToUse) {
+        // Update existing project
+        response = await axios.put(`/api/projects/${idToUse}`, projectData);
+      } else {
+        // Create new project
+        response = await axios.post('/api/projects', projectData);
+      }
       
       set({
         project: {
-          ...get().project,
+          ...project,
           id: response.data.id,
         },
+        currentProjectId: response.data.id,
         loading: false,
       });
       
       return response.data.id;
     } catch (error) {
-      console.error('Error saving project:', error);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const err = error as any;
+      console.error('Error saving project:', err);
+      const { errorMessage, errorType } = handleError(err, 'Không thể lưu dự án. Vui lòng thử lại.');
       set({
         loading: false,
-        error: 'Failed to save project. Please try again.',
+        error: errorMessage,
+        errorType
       });
-      throw error;
+      return null;
     }
   },
 
   loadProject: async (id) => {
     try {
-      set({ loading: true, error: null });
+      set({ 
+        loading: true, 
+        error: null,
+        errorType: null,
+        lastAction: 'load'
+      });
       
-      const response = await axios.get(`${API_URL}/api/projects/${id}`);
+      // Use the Next.js API route instead of directly calling Python backend
+      const response = await axios.get(`/api/projects/${id}`);
       const { project, analysis, strategies } = response.data;
       
       set({
@@ -295,22 +434,53 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
           id: project.id,
           title: project.title,
           description: project.description,
-          goals: project.goals,
-          industry: project.industry,
-          stage: project.stage,
-          decisionType: project.decision_type,
-          createdAt: new Date(project.created_at),
-          updatedAt: new Date(project.updated_at),
+          goals: Array.isArray(project.goals) ? project.goals : [],
+          industry: project.industry || '',
+          stage: project.stage || '',
+          decisionType: project.decision_type || '',
+          createdAt: project.created_at ? new Date(project.created_at) : undefined,
+          updatedAt: project.updated_at ? new Date(project.updated_at) : undefined,
         },
-        analysis,
-        strategies,
+        analysis: {
+          strengths: Array.isArray(analysis?.strengths) ? analysis.strengths : [],
+          weaknesses: Array.isArray(analysis?.weaknesses) ? analysis.weaknesses : [],
+          opportunities: Array.isArray(analysis?.opportunities) ? analysis.opportunities : [],
+          threats: Array.isArray(analysis?.threats) ? analysis.threats : [],
+        },
+        strategies: {
+          so: Array.isArray(strategies?.so) ? strategies.so : [],
+          wo: Array.isArray(strategies?.wo) ? strategies.wo : [],
+          st: Array.isArray(strategies?.st) ? strategies.st : [],
+          wt: Array.isArray(strategies?.wt) ? strategies.wt : [],
+        },
+        currentProjectId: id,
         loading: false,
       });
     } catch (error) {
-      console.error('Error loading project:', error);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const err = error as any;
+      console.error('Error loading project:', err);
+      // Extract meaningful error message
+      let errorMessage = 'Không thể tải dự án. Vui lòng thử lại.';
+      let errorType: 'api' | 'validation' | 'connection' | 'unknown' = 'unknown';
+      if (err.response) {
+        // Handle 404 specifically
+        if (err.response.status === 404) {
+          errorMessage = 'Không tìm thấy dự án. Dự án có thể đã bị xóa.';
+        } else {
+          // Other API errors
+          errorMessage = err.response.data?.error || errorMessage;
+        }
+        errorType = 'api';
+      } else if (err.request) {
+        // Request was made but no response received
+        errorMessage = 'Không thể kết nối với máy chủ. Vui lòng kiểm tra kết nối mạng của bạn.';
+        errorType = 'connection';
+      }
       set({
         loading: false,
-        error: 'Failed to load project. Please try again.',
+        error: errorMessage,
+        errorType
       });
     }
   },
@@ -337,8 +507,11 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
         st: [],
         wt: [],
       },
+      currentProjectId: null,
       loading: false,
       error: null,
+      errorType: null,
+      lastAction: null,
     });
   },
 }));

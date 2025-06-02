@@ -1,11 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Download, Share2 } from 'lucide-react';
-import useSWOTStore from '../store/swot-store';
+import { useRouter } from 'next/navigation';
+import useSWOTStore from '../store/swot-store'; // Added import
 
 const StrategyCard = ({
   title,
@@ -41,11 +43,50 @@ const StrategyCard = ({
 };
 
 export default function Strategies() {
-  const { strategies, analysis, project } = useSWOTStore();
+  // Use individual selectors to avoid creating new objects on every render
+  const strategies = useSWOTStore(state => state.strategies);
+  const analysis = useSWOTStore(state => state.analysis);
+  const project = useSWOTStore(state => state.project);
+  const generateStrategies = useSWOTStore(state => state.generateStrategies);
+  const saveProject = useSWOTStore(state => state.saveProject);
+  const loading = useSWOTStore(state => state.loading);
+  const error = useSWOTStore(state => state.error);
+  const projectId = useSWOTStore(state => state.currentProjectId);
+
+  const router = useRouter();
 
   // Check if we have strategies and analysis data
-  const hasStrategies = Object.values(strategies).some(arr => arr.length > 0);
-  const hasAnalysisData = Object.values(analysis).some(arr => arr.length > 0);
+  const hasStrategies = strategies && Object.values(strategies).some((arr: string[]) => arr.length > 0);
+  const hasAnalysisData = analysis && Object.values(analysis).some((arr: unknown[]) => Array.isArray(arr) && arr.length > 0);
+  
+  // State for tracking saving operation status
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Handle saving the project
+  const handleSaveProject = async () => {
+    try {
+      setIsSaving(true);
+      setSaveError(null);
+      // const projectId = await saveProject(); // projectId is now from the store
+      if (!projectId) {
+        throw new Error("Project ID is not available. Cannot save.");
+      }
+      await saveProject(projectId); // Pass projectId to saveProject
+      
+      // Show success notification
+      alert(`Project saved successfully! ID: ${projectId}`);
+      
+      // Redirect to the analysis page for this project
+      router.push(`/projects/${projectId}/analysis`);
+    } catch (error) {
+      console.error('Error saving project:', error);
+      setSaveError(typeof error === 'string' ? error : 'Failed to save project. Please try again.');
+      alert('Failed to save project. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Icons for each strategy quadrant
   const soIcon = <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold">S</div>;
@@ -53,6 +94,57 @@ export default function Strategies() {
   const stIcon = <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold">S</div>;
   const wtIcon = <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-bold">W</div>;
   
+  if (loading && !project) { // Show loading only if project is not yet loaded
+    return (
+      <Card className="w-full max-w-3xl mx-auto">
+        <CardHeader>
+          <CardTitle>Đang tải dữ liệu dự án...</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center py-8">
+          <p>Vui lòng đợi...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) { // Display error if loading failed
+    return (
+      <Card className="w-full max-w-3xl mx-auto">
+        <CardHeader>
+          <CardTitle>Lỗi</CardTitle>
+          <CardDescription>
+            Không thể tải dữ liệu dự án.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-center py-8">
+          <p className="text-red-500">{error}</p>
+          <Button onClick={() => router.push('/projects')} className="mt-4">
+            Quay lại danh sách dự án
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (!project && !loading) { // If no project and not loading, means project not found or not selected
+    return (
+      <Card className="w-full max-w-3xl mx-auto">
+        <CardHeader>
+          <CardTitle>Không tìm thấy dự án</CardTitle>
+          <CardDescription>
+            Vui lòng chọn một dự án hoặc tạo dự án mới.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-center py-8">
+          <Button onClick={() => router.push('/projects')} className="mt-4">
+            Đi đến danh sách dự án
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+
   if (!hasAnalysisData) {
     return (
       <Card className="w-full max-w-3xl mx-auto">
@@ -79,10 +171,19 @@ export default function Strategies() {
           </CardDescription>
         </CardHeader>
         <CardContent className="text-center py-8">
-          <p>Đang tạo chiến lược...</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            (Trong ứng dụng thực tế, các chiến lược sẽ được tạo bởi AI dựa trên phân tích SWOT)
-          </p>
+          {loading ? (
+            <p>Đang tạo chiến lược...</p>
+          ) : (
+            <div>
+              <p>Sẵn sàng tạo chiến lược dựa trên phân tích SWOT của bạn</p>
+              <Button 
+                onClick={generateStrategies} 
+                className="mt-4 bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                Tạo chiến lược
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -180,15 +281,26 @@ export default function Strategies() {
         
         <Separator />
         
-        <CardFooter className="flex justify-end space-x-4 p-4">
-          <Button variant="outline" className="gap-2">
-            <Download size={16} />
-            Tải xuống PDF
+        <CardFooter className="flex justify-between space-x-4 p-4">
+          <Button 
+            variant="default" 
+            className="gap-2 bg-blue-500 hover:bg-blue-600 text-white"
+            onClick={handleSaveProject}
+            disabled={isSaving}
+          >
+            {isSaving ? 'Đang lưu...' : 'Lưu dự án'}
+            {saveError && <span className="text-red-200 ml-2">⚠️</span>}
           </Button>
-          <Button variant="secondary" className="gap-2">
-            <Share2 size={16} />
-            Chia sẻ
-          </Button>
+          <div className="flex space-x-4">
+            <Button variant="outline" className="gap-2">
+              <Download size={16} />
+              Tải xuống PDF
+            </Button>
+            <Button variant="secondary" className="gap-2">
+              <Share2 size={16} />
+              Chia sẻ
+            </Button>
+          </div>
         </CardFooter>
       </Card>
     </div>

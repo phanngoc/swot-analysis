@@ -5,11 +5,19 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import Layout from '@/components/Layout';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 
 export default function StrategiesPage() {
   return (
     <Layout>
       <div className="container max-w-6xl mx-auto py-6">
+        <Breadcrumbs
+          items={[
+            { label: 'Analysis', href: '/analysis' },
+            { label: 'Strategy' }
+          ]}
+        />
+        
         <div className="flex items-center mb-8">
           <Link href="/analysis">
             <Button variant="ghost" size="sm" className="gap-2">

@@ -1,5 +1,6 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
+from openai import project
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 from typing import List, Optional, Dict, Any
 import os
@@ -8,7 +9,7 @@ import uuid
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import json
-from sqlalchemy import JSON, Column
+from sqlalchemy import JSON, Column, desc, text, delete # Added delete
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import StrOutputParser
@@ -83,6 +84,7 @@ class SWOTAnalysisResponse(BaseModel):
     weaknesses: List[Dict[str, Any]]
     opportunities: List[Dict[str, Any]]
     threats: List[Dict[str, Any]]
+    project: ProjectRead
 
 class SWOTStrategiesRequest(BaseModel):
     strengths: List[Dict[str, Any]]
@@ -178,12 +180,20 @@ def generate_swot_analysis(project_data: Dict[str, Any]) -> Dict[str, List[Dict[
     # Execute chain
     try:
         result = chain.invoke(project_data)
+        result = result.strip()
+        if result.startswith("```json"):
+            result = result[len("```json"):].strip()
+        if result.endswith("```"):
+            result = result[:-3].strip()
+
+        print('Result:generate_swot_analysis:', result)
         return json.loads(result)
     except Exception as e:
         print(f"Error generating SWOT analysis: {e}")
+        print(e)
         # Fallback with dummy data
         return {
-            "strengths": [
+            "strength": [
                 {"content": "Strong management team", "impact": 4, "priority": "high", "category": "strength"},
                 {"content": "Innovative product", "impact": 5, "priority": "high", "category": "strength"},
                 {"content": "Cost-effective operations", "impact": 3, "priority": "medium", "category": "strength"}
@@ -264,6 +274,13 @@ def generate_swot_strategies(analysis: Dict[str, List[Dict[str, Any]]]) -> Dict[
             "opportunities": opportunities,
             "threats": threats
         })
+        # Remove any leading/trailing whitespace and trim code block markers if present
+        result = result.strip()
+        if result.startswith("```json"):
+            result = result[len("```json"):].strip()
+        if result.endswith("```"):
+            result = result[:-3].strip()
+        print('Result:generate_swot_strategies:', result)
         return json.loads(result)
     except Exception as e:
         print(f"Error generating SWOT strategies: {e}")
@@ -296,17 +313,53 @@ def generate_swot_strategies(analysis: Dict[str, List[Dict[str, Any]]]) -> Dict[
 def read_root():
     return {"message": "Welcome to SWOT Analysis API"}
 
+@app.get("/api/health")
+def health_check():
+    """Health check endpoint for monitoring and Docker healthchecks"""
+    try:
+        # Check database connection
+        with Session(engine) as session:
+            session.exec("SELECT 1").first()
+        
+        return {
+            "status": "healthy",
+            "database": "connected",
+            "api": "running",
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }, 500
+
 @app.post("/api/swot/analyze", response_model=SWOTAnalysisResponse)
 def analyze_swot(request: SWOTAnalysisRequest):
     """Generate SWOT analysis based on project information"""
-    project_dict = request.project.dict()
-    analysis = generate_swot_analysis(project_dict)
+    project_dict = request.project.model_dump()
+    # Save project information to the database
+    project = Project(**project_dict)
+    with Session(engine) as session:
+        session.add(project)
+        session.commit()
+        session.refresh(project)
+        # Use model_dump to get all fields, including created_at and updated_at
+        project_full_dict = project.model_dump()
+    print('project_dict:', project_full_dict)
+    # Generate SWOT analysis, response thêm info project
+
+    analysis = generate_swot_analysis(project_full_dict)
+    print('analysis:', analysis)
+    # Set project as a dict, not a list
+    analysis['project'] = project_full_dict
+    print('analysis:', analysis)
     return analysis
 
 @app.post("/api/swot/strategies", response_model=SWOTStrategiesResponse)
 def generate_strategies(request: SWOTStrategiesRequest):
     """Generate strategies based on SWOT analysis"""
-    analysis_dict = request.dict()
+    analysis_dict = request.model_dump()
     strategies = generate_swot_strategies(analysis_dict)
     return strategies
 
@@ -368,13 +421,12 @@ def get_project(project_id: str, session: Session = Depends(get_session)):
         
         # Get SWOT items
         swot_items = session.exec(select(SWOTItem).where(SWOTItem.project_id == project_id)).all()
-        
         # Organize items by category
         analysis = {
-            "strengths": [],
-            "weaknesses": [],
-            "opportunities": [],
-            "threats": []
+            "strength": [],
+            "weakness": [],
+            "opportunity": [],
+            "threat": []
         }
         
         for item in swot_items:
@@ -386,7 +438,15 @@ def get_project(project_id: str, session: Session = Depends(get_session)):
                 "category": item.category
             }
             analysis[item.category].append(item_dict)
-        
+        print('analysis:', analysis)
+
+        analysis = {
+            "strengths": analysis.get("strength", []),
+            "weaknesses": analysis.get("weakness", []),
+            "opportunities": analysis.get("opportunity", []),
+            "threats": analysis.get("threat", []),
+            "project": project.model_dump()  # Add project details to analysis
+        }
         # Get strategies
         strategies_items = session.exec(select(Strategy).where(Strategy.project_id == project_id)).all()
         
@@ -400,16 +460,18 @@ def get_project(project_id: str, session: Session = Depends(get_session)):
         
         for strategy in strategies_items:
             strategies[strategy.type].append(strategy.content)
-        
+        print('strategies:', strategies)
         return {
             "project": project,
             "analysis": analysis,
             "strategies": strategies
         }
         
-    except HTTPException:
+    except HTTPException as http_exc:
+        print(f"HTTPException:", http_exc)
         raise
     except Exception as e:
+        print("Exception:", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving project: {str(e)}"
@@ -418,5 +480,47 @@ def get_project(project_id: str, session: Session = Depends(get_session)):
 @app.get("/api/projects", response_model=List[ProjectRead])
 def list_projects(session: Session = Depends(get_session)):
     """List all projects"""
-    projects = session.exec(select(Project).order_by(Project.created_at.desc())).all()
+    projects = session.exec(select(Project).order_by(desc(text('created_at')))).all()
     return projects
+
+@app.delete("/api/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_project(project_id: str, session: Session = Depends(get_session)):
+    """Delete a project and its associated SWOT items and strategies"""
+    try:
+        project = session.exec(select(Project).where(Project.id == project_id)).first()
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found"
+            )
+
+        # Delete associated SWOT items
+        swot_items_to_delete = session.exec(select(SWOTItem).where(SWOTItem.project_id == project_id)).all()
+        for item in swot_items_to_delete:
+            session.delete(item)
+
+        # Delete associated strategies
+        strategies_to_delete = session.exec(select(Strategy).where(Strategy.project_id == project_id)).all()
+        for strategy_item in strategies_to_delete:
+            session.delete(strategy_item)
+        
+        # Flush the session to ensure child deletions are processed before parent deletion
+        session.flush()
+
+        # Delete the project itself
+        session.delete(project)
+        
+        session.commit()
+        # FastAPI automatically handles 204 No Content for functions returning None or with no return statement
+    
+    except HTTPException as http_exc:
+        print(f"HTTPException:", http_exc) # Keep or improve logging
+        session.rollback()
+        raise http_exc
+    except Exception as e:
+        session.rollback()
+        print("Exception:", e) # Keep or improve logging
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting project: {str(e)}"
+        )
