@@ -1,8 +1,9 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from openai import project
+from regex import F
 from sqlmodel import Field, Session, SQLModel, create_engine, select
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 import os
 from datetime import datetime
 import uuid
@@ -132,34 +133,40 @@ def init_llm():
 
     return ChatOpenAI(model="gpt-4o", temperature=0.5)
 
-def generate_swot_analysis(project_data: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
+def generate_swot_analysis(project_data: Dict[str, Any]) -> Union[Dict[str, List[Dict[str, Any]]], bool]:
     """Generate a SWOT analysis using LLM"""
     llm = init_llm()
     
     # Define the prompt template
     template = """
-    You are an expert business analyst specializing in SWOT analysis. Based on the information below, 
-    generate a comprehensive SWOT (Strengths, Weaknesses, Opportunities, Threats) analysis.
+    Bạn là một chuyên gia phân tích kinh doanh, có chuyên môn sâu về phân tích SWOT. Dựa trên các thông tin được cung cấp bên dưới, hãy xây dựng bản phân tích SWOT đầy đủ, bao gồm 4 yếu tố chính: Điểm mạnh (Strengths), Điểm yếu (Weaknesses), Cơ hội (Opportunities), và Thách thức (Threats).
 
-    Project Title: {title}
-    Description: {description}
-    Goals: {goals}
-    Industry: {industry}
-    Stage: {stage}
-    Decision Type: {decision_type}
+    **Thông tin dự án:**
+    - Tên dự án: {title}
+    - Mô tả: {description}
+    - Mục tiêu: {goals}
+    - Ngành nghề: {industry}
+    - Giai đoạn phát triển: {stage}
+    - Loại quyết định: {decision_type}
 
-    For each category (Strengths, Weaknesses, Opportunities, Threats), provide 3-5 items.
-    Format your response as a JSON with this structure:
+    Yêu cầu:
+    - Với mỗi nhóm (Điểm mạnh, Điểm yếu, Cơ hội, Thách thức), hãy liệt kê từ 3 đến 5 mục.
+    - Kết quả trả về cần được trình bày dưới dạng JSON với cấu trúc sau:
+
     {{
         "strengths": [
-            {{"content": "strength description", "impact": (1-5), "priority": "high/medium/low", "category": "strength"}}
+            {{"content": "mô tả điểm mạnh", "impact": (1-5), "priority": "cao/trung bình/thấp", "category": "strength"}}
         ],
-        "weaknesses": [...],
+        "weaknesses": [
+            {{"content": "...", "impact": ..., "priority": "...", "category": "weakness"}}
+        ],
         "opportunities": [...],
         "threats": [...]
     }}
-    
-    Ensure all JSON values are proper strings, numbers, or array entries.
+
+    Lưu ý:
+    - Tất cả các giá trị trong JSON phải đúng định dạng: chuỗi (string), số (number) hoặc mảng (array).
+    - Hãy đảm bảo ngắn gọn, rõ ràng và có tính thực tiễn cao.
     """
     
     prompt = ChatPromptTemplate.from_template(template)
@@ -192,59 +199,41 @@ def generate_swot_analysis(project_data: Dict[str, Any]) -> Dict[str, List[Dict[
         print(f"Error generating SWOT analysis: {e}")
         print(e)
         # Fallback with dummy data
-        return {
-            "strength": [
-                {"content": "Strong management team", "impact": 4, "priority": "high", "category": "strength"},
-                {"content": "Innovative product", "impact": 5, "priority": "high", "category": "strength"},
-                {"content": "Cost-effective operations", "impact": 3, "priority": "medium", "category": "strength"}
-            ],
-            "weaknesses": [
-                {"content": "Limited market reach", "impact": 4, "priority": "high", "category": "weakness"},
-                {"content": "Funding constraints", "impact": 3, "priority": "medium", "category": "weakness"},
-                {"content": "Lack of experienced staff", "impact": 2, "priority": "low", "category": "weakness"}
-            ],
-            "opportunities": [
-                {"content": "Emerging market demand", "impact": 5, "priority": "high", "category": "opportunity"},
-                {"content": "Strategic partnerships", "impact": 4, "priority": "high", "category": "opportunity"},
-                {"content": "New technology adoption", "impact": 3, "priority": "medium", "category": "opportunity"}
-            ],
-            "threats": [
-                {"content": "Intense competition", "impact": 4, "priority": "high", "category": "threat"},
-                {"content": "Changing regulations", "impact": 3, "priority": "medium", "category": "threat"},
-                {"content": "Economic slowdown", "impact": 3, "priority": "medium", "category": "threat"}
-            ]
-        }
+        return False
 
-def generate_swot_strategies(analysis: Dict[str, List[Dict[str, Any]]]) -> Dict[str, List[str]]:
+def generate_swot_strategies(analysis: Dict[str, List[Dict[str, Any]]]) -> Union[Dict[str, List[str]], bool]:
     """Generate SWOT strategies based on the analysis"""
     llm = init_llm()
     
     # Define the prompt template
     template = """
-    You are an expert business strategist. Based on the SWOT analysis below, generate strategic recommendations
-    in these four categories:
-    
-    1. SO (Strength-Opportunity) strategies: Using strengths to capitalize on opportunities
-    2. WO (Weakness-Opportunity) strategies: Improving weaknesses to better capture opportunities
-    3. ST (Strength-Threat) strategies: Using strengths to mitigate threats
-    4. WT (Weakness-Threat) strategies: Addressing weaknesses to avoid threats
-    
-    SWOT Analysis:
-    Strengths: {strengths}
-    Weaknesses: {weaknesses}
-    Opportunities: {opportunities}
-    Threats: {threats}
-    
-    For each category (SO, WO, ST, WT), provide 2-3 specific, actionable strategies.
-    Format your response as a JSON with this structure:
+    Bạn là một chuyên gia chiến lược kinh doanh. Dựa trên bản phân tích SWOT dưới đây, hãy đề xuất các chiến lược phù hợp theo 4 nhóm sau:
+
+    1. **Chiến lược SO (Strength - Opportunity)**: Tận dụng điểm mạnh để khai thác cơ hội
+    2. **Chiến lược WO (Weakness - Opportunity)**: Cải thiện điểm yếu để tận dụng cơ hội
+    3. **Chiến lược ST (Strength - Threat)**: Dùng điểm mạnh để giảm thiểu rủi ro/thách thức
+    4. **Chiến lược WT (Weakness - Threat)**: Khắc phục điểm yếu để tránh rủi ro/thách thức
+
+    **Phân tích SWOT:**
+    - Điểm mạnh (Strengths): {strengths}
+    - Điểm yếu (Weaknesses): {weaknesses}
+    - Cơ hội (Opportunities): {opportunities}
+    - Thách thức (Threats): {threats}
+
+    **Yêu cầu đầu ra:**
+    - Với mỗi nhóm chiến lược (SO, WO, ST, WT), đề xuất từ 2 đến 3 chiến lược cụ thể và có thể hành động.
+    - Trình bày kết quả dưới dạng JSON với cấu trúc sau:
+
     {{
-        "so": ["Strategy 1", "Strategy 2", "Strategy 3"],
-        "wo": ["Strategy 1", "Strategy 2", "Strategy 3"],
-        "st": ["Strategy 1", "Strategy 2", "Strategy 3"],
-        "wt": ["Strategy 1", "Strategy 2", "Strategy 3"]
+        "so": ["Chiến lược 1", "Chiến lược 2", "Chiến lược 3"],
+        "wo": ["Chiến lược 1", "Chiến lược 2", "Chiến lược 3"],
+        "st": ["Chiến lược 1", "Chiến lược 2", "Chiến lược 3"],
+        "wt": ["Chiến lược 1", "Chiến lược 2", "Chiến lược 3"]
     }}
-    
-    Ensure all strategies are specific, actionable, and directly related to the SWOT elements.
+
+    **Lưu ý:**
+    - Các chiến lược phải cụ thể, dễ triển khai và có liên quan chặt chẽ đến các yếu tố SWOT đã đưa ra.
+
     """
     
     prompt = ChatPromptTemplate.from_template(template)
@@ -285,28 +274,7 @@ def generate_swot_strategies(analysis: Dict[str, List[Dict[str, Any]]]) -> Dict[
     except Exception as e:
         print(f"Error generating SWOT strategies: {e}")
         # Fallback with dummy data
-        return {
-            "so": [
-                "Leverage our strong management team to capitalize on emerging market demand",
-                "Use our innovative product to establish strategic partnerships",
-                "Utilize cost-effective operations to accelerate new technology adoption"
-            ],
-            "wo": [
-                "Expand market reach by forming strategic partnerships",
-                "Seek investment to overcome funding constraints and address emerging market demand",
-                "Hire or train staff to take advantage of new technology opportunities"
-            ],
-            "st": [
-                "Use our innovative product features to differentiate from competitors",
-                "Leverage management expertise to navigate changing regulations",
-                "Apply cost-effective operations to weather economic slowdowns"
-            ],
-            "wt": [
-                "Increase market diversification to reduce competitive pressure",
-                "Implement compliance programs to address regulatory changes",
-                "Develop contingency plans for economic uncertainties"
-            ]
-        }
+        return False
 
 # API Routes
 @app.get("/")
