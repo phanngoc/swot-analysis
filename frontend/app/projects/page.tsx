@@ -57,7 +57,7 @@ export default function ProjectsPage() {
   };
 
   const navigateToProject = (id: string) => {
-    router.push(`/analysis?id=${id}`);
+    router.push(`/projects/${id}/analysis`);
   };
 
   const handleDeleteProject = async (projectId: string) => {

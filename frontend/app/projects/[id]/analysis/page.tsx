@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useSWOTWithToast } from '@/app/components/hooks/use-swot-with-toast';
+import useSWOTStore from '@/app/store/swot-store';
 import Layout from '@/components/Layout';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -12,21 +12,43 @@ import Strategies from '@/components/Strategies';
 
 export default function ProjectDetailPage() {
   const { id } = useParams();
-  const { project, analysis, strategies, loadProject, loading } = useSWOTWithToast();
-  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+
+  // Use store selectors to avoid recreating objects on every render
+  const project = useSWOTStore(state => state.project);
+  const analysis = useSWOTStore(state => state.analysis);
+  const loadProject = useSWOTStore(state => state.loadProject);
+  const loading = useSWOTStore(state => state.loading);
+  const error = useSWOTStore(state => state.error);
 
   useEffect(() => {
     if (id) {
-      setIsLoading(true);
-      loadProject(id as string).finally(() => setIsLoading(false));
+      loadProject(id as string);
     }
   }, [id, loadProject]);
 
-  if (isLoading || loading) {
+  if (loading) {
     return (
       <Layout>
         <div className="py-16 text-center text-lg">Đang tải dữ liệu dự án...</div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="py-16 text-center text-red-500">
+          {error}
+          <div className="mt-4">
+            <button 
+              onClick={() => router.push('/projects')} 
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Quay về danh sách dự án
+            </button>
+          </div>
+        </div>
       </Layout>
     );
   }

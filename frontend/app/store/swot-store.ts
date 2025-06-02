@@ -2,7 +2,6 @@
 
 import { create } from 'zustand';
 import axios from 'axios';
-import { useToast } from '@/app/components/ui/use-toast';
 
 // Define types
 export type SWOTItem = {
@@ -41,6 +40,7 @@ export type SWOTState = {
     st: string[];
     wt: string[];
   };
+  currentProjectId: string | null;
   loading: boolean;
   error: string | null;
   errorType: 'api' | 'validation' | 'connection' | 'unknown' | null;
@@ -57,28 +57,26 @@ export type SWOTActions = {
   setStrategies: (strategies: { so: string[]; wo: string[]; st: string[]; wt: string[] }) => void;
   generateAnalysis: () => Promise<void>;
   generateStrategies: () => Promise<void>;
-  saveProject: () => Promise<void>;
+  saveProject: (projectId?: string) => Promise<void>;
   loadProject: (id: string) => Promise<void>;
   resetState: () => void;
 };
 
-// Helper function to handle errors and show toast
-const handleError = (error: any, defaultMessage: string) => {
+// Helper function to handle errors
+const handleError = (error: unknown, defaultMessage: string) => {
   let errorMessage = defaultMessage;
   let errorType: 'api' | 'validation' | 'connection' | 'unknown' = 'unknown';
       
-  if (error.response) {
+  if (error && typeof error === 'object' && 'response' in error) {
     // Backend returned an error response
-    errorMessage = error.response.data?.error || errorMessage;
+    const err = error as { response?: { data?: { error?: string } } };
+    errorMessage = err.response?.data?.error || errorMessage;
     errorType = 'api';
-  } else if (error.request) {
+  } else if (error && typeof error === 'object' && 'request' in error) {
     // Request was made but no response received
     errorMessage = 'Không thể kết nối với máy chủ. Vui lòng kiểm tra kết nối mạng của bạn.';
     errorType = 'connection';
   }
-
-  const { toast } = useToast();
-  toast(errorMessage, "destructive");
 
   return { errorMessage, errorType };
 };
@@ -105,6 +103,7 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
     st: [],
     wt: [],
   },
+  currentProjectId: null,
   loading: false,
   error: null,
   errorType: null,
@@ -342,7 +341,7 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
     }
   },
 
-  saveProject: async () => {
+  saveProject: async (projectId?: string) => {
     try {
       set({ 
         loading: true, 
@@ -351,7 +350,8 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
         lastAction: 'save'
       });
       
-      const { project, analysis, strategies } = get();
+      const { project, analysis, strategies, currentProjectId } = get();
+      const idToUse = projectId || currentProjectId || project.id;
 
       // Check for required fields
       if (!project.title || !project.description || !project.industry || !project.stage || !project.decisionType) {
@@ -361,12 +361,11 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
           errorType: 'validation'
         });
         
-        handleError(new Error(), 'Vui lòng điền đầy đủ thông tin dự án trước khi lưu.');
-        return null;
+        handleError(new Error('Validation failed'), 'Vui lòng điền đầy đủ thông tin dự án trước khi lưu.');
+        return;
       }
       
-      // Use the Next.js API route instead of directly calling Python backend
-      const response = await axios.post('/api/projects', {
+      const projectData = {
         project: {
           title: project.title,
           description: project.description,
@@ -382,13 +381,23 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
           threats: analysis.threats,
         },
         strategies: strategies,
-      });
+      };
+
+      let response;
+      if (idToUse) {
+        // Update existing project
+        response = await axios.put(`/api/projects/${idToUse}`, projectData);
+      } else {
+        // Create new project
+        response = await axios.post('/api/projects', projectData);
+      }
       
       set({
         project: {
           ...project,
           id: response.data.id,
         },
+        currentProjectId: response.data.id,
         loading: false,
       });
       
@@ -444,6 +453,7 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
           st: Array.isArray(strategies?.st) ? strategies.st : [],
           wt: Array.isArray(strategies?.wt) ? strategies.wt : [],
         },
+        currentProjectId: id,
         loading: false,
       });
     } catch (error) {
@@ -497,6 +507,7 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
         st: [],
         wt: [],
       },
+      currentProjectId: null,
       loading: false,
       error: null,
       errorType: null,

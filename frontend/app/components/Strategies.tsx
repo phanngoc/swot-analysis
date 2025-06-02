@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Download, Share2, Save } from 'lucide-react';
+import { Download, Share2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import useSWOTStore from '../store/swot-store'; // Added import
 
@@ -43,33 +43,21 @@ const StrategyCard = ({
 };
 
 export default function Strategies() {
-  // const { strategies, analysis, project, generateStrategies, saveProject, loading } = useSWOTWithToast();
-  // Replaced useSWOTWithToast with useSWOTStore to access global state
-  const { 
-    strategies, 
-    analysis, 
-    project, 
-    generateStrategies, 
-    saveProject, 
-    loading,
-    error, // Added error state
-    projectId // Added projectId from store
-  } = useSWOTStore(state => ({
-    strategies: state.strategies,
-    analysis: state.analysis,
-    project: state.project,
-    generateStrategies: state.generateStrategies,
-    saveProject: state.saveProject,
-    loading: state.loading,
-    error: state.error,
-    projectId: state.currentProjectId, // Assuming currentProjectId is in your store
-  }));
+  // Use individual selectors to avoid creating new objects on every render
+  const strategies = useSWOTStore(state => state.strategies);
+  const analysis = useSWOTStore(state => state.analysis);
+  const project = useSWOTStore(state => state.project);
+  const generateStrategies = useSWOTStore(state => state.generateStrategies);
+  const saveProject = useSWOTStore(state => state.saveProject);
+  const loading = useSWOTStore(state => state.loading);
+  const error = useSWOTStore(state => state.error);
+  const projectId = useSWOTStore(state => state.currentProjectId);
 
   const router = useRouter();
 
   // Check if we have strategies and analysis data
-  const hasStrategies = Object.values(strategies).some(arr => arr.length > 0);
-  const hasAnalysisData = Object.values(analysis).some(arr => arr.length > 0);
+  const hasStrategies = strategies && Object.values(strategies).some((arr: string[]) => arr.length > 0);
+  const hasAnalysisData = analysis && Object.values(analysis).some((arr: unknown[]) => Array.isArray(arr) && arr.length > 0);
   
   // State for tracking saving operation status
   const [isSaving, setIsSaving] = useState(false);

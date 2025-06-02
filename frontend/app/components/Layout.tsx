@@ -21,7 +21,6 @@ const SidebarItem = ({
   const getMenuColor = () => {
     if (href === '/') return 'text-blue-600 dark:text-blue-400';
     if (href === '/analysis') return 'text-emerald-600 dark:text-emerald-400';
-    if (href === '/strategies') return 'text-purple-600 dark:text-purple-400';
     if (href === '/projects') return 'text-amber-600 dark:text-amber-400';
     return 'text-gray-700 dark:text-gray-300';
   };
@@ -30,7 +29,6 @@ const SidebarItem = ({
     const baseStyle = 'bg-gradient-to-r';
     if (href === '/') return `${baseStyle} from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/40 border-l-4 border-blue-500`;
     if (href === '/analysis') return `${baseStyle} from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/40 border-l-4 border-emerald-500`;
-    if (href === '/strategies') return `${baseStyle} from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/40 border-l-4 border-purple-500`;
     if (href === '/projects') return `${baseStyle} from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/40 border-l-4 border-amber-500`;
     return '';
   };
@@ -99,12 +97,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               />
               <SidebarItem
                 icon={Settings}
-                label="Strategy Engine"
-                href="/strategies"
-                isActive={pathname === '/strategies'}
-              />
-              <SidebarItem
-                icon={FileText}
                 label="My Projects"
                 href="/projects"
                 isActive={pathname === '/projects'}
@@ -141,7 +133,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <h1 className="text-lg font-medium text-gray-700 dark:text-gray-200 ml-4">
             {pathname === '/' && 'Strategic Dashboard'}
             {pathname === '/analysis' && 'SWOT Analysis Matrix'}
-            {pathname === '/strategies' && 'Strategy Development'}
+            {pathname === '/projects' && 'My Projects'}
+            {pathname.includes('/projects/') && pathname.includes('/strategies') && 'Project Strategies'}
+            {pathname.includes('/projects/') && pathname.includes('/analysis') && 'Project Analysis'}
           </h1>
           
           <div className="ml-auto flex items-center gap-5">

@@ -42,7 +42,7 @@ export default function AnalysisPage() {
     };
 
     loadProjectData();
-  }, [projectId, resetState]);
+  }, [projectId, loadProject]);
 
   // Check if we have any analysis data
   const hasAnalysisData = Object.values(analysis).some(arr => arr.length > 0);
@@ -120,7 +120,16 @@ export default function AnalysisPage() {
                     </Button>
 
                     <Button 
-                      onClick={() => router.push('/strategies')}
+                      onClick={() => {
+                        if (projectId) {
+                          router.push(`/projects/${projectId}/strategies`);
+                        } else if (project?.id) {
+                          router.push(`/projects/${project.id}/strategies`);
+                        } else {
+                          // If no project ID, redirect to projects page to save first
+                          router.push('/projects');
+                        }
+                      }}
                       className="gap-2 bg-blue-500 text-white hover:bg-blue-600"
                       size="lg"
                       disabled={loading}
