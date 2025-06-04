@@ -13,7 +13,7 @@ import Layout from '@/components/Layout';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 
 export default function AnalysisPage() {
-  const { analysis, project, loadProject, generateAnalysis, loading } = useSWOTWithToast();
+  const { analysis, project, loadProject, generateAnalysis, loading, resetState } = useSWOTWithToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<string>("input");
@@ -21,6 +21,14 @@ export default function AnalysisPage() {
 
   // Check if we have a project ID in the URL
   const projectId = searchParams.get('id');
+
+  console.log("Project ID from URL:", projectId);
+  // if projectId is not present, reset the store
+  useEffect(() => {
+    if (!projectId) {
+      resetState();
+    }
+  }, [projectId, resetState]);
 
   // Load project data if we have an ID
   useEffect(() => {
@@ -35,9 +43,6 @@ export default function AnalysisPage() {
         } finally {
           setIsLoading(false);
         }
-      } else {
-        // Reset the store if no project ID (new analysis)
-        // resetState();
       }
     };
 

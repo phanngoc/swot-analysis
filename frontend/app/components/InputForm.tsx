@@ -96,7 +96,7 @@ export default function InputForm({ onSubmit }: { onSubmit: () => void }) {
               {project.goals.map((g, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between bg-gray-100 p-2 rounded-md shadow-sm hover:bg-gray-200 transition"
+                  className="flex items-center justify-between bg-green-200 p-2 rounded-md shadow-sm hover:bg-green-400 transition"
                 >
                   <span className="text-gray-800 font-medium">{g}</span>
                   <Button
@@ -182,7 +182,7 @@ export default function InputForm({ onSubmit }: { onSubmit: () => void }) {
             type="submit" 
             disabled={!project.title || !project.description || loading}
             variant="default"
-            className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-medium px-6 py-2 rounded disabled:opacity-50"
+            className="pt-4 bg-blue-500 hover:bg-blue-600 text-white font-medium px-6 py-2 rounded disabled:opacity-50"
             >
             {loading ? (
               <>
