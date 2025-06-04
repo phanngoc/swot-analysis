@@ -57,6 +57,7 @@ export type SWOTActions = {
   setStrategies: (strategies: { so: string[]; wo: string[]; st: string[]; wt: string[] }) => void;
   generateAnalysis: () => Promise<string | null | void>;
   generateStrategies: () => Promise<void>;
+  saveProjectStrategy: () => Promise<string | null>;
   saveProject: (projectId?: string) => Promise<string | null>;
   loadProject: (id: string) => Promise<void>;
   resetState: () => void;
@@ -412,6 +413,45 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
       });
       
       return response.data.id;
+    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const err = error as any;
+      console.error('Error saving project:', err);
+      const { errorMessage, errorType } = handleError(err, 'Không thể lưu dự án. Vui lòng thử lại.');
+      set({
+        loading: false,
+        error: errorMessage,
+        errorType
+      });
+      return null;
+    }
+  },
+
+  saveProjectStrategy: async () => {
+    try {
+      set({ 
+        loading: true, 
+        error: null,
+        errorType: null,
+        lastAction: 'save'
+      });
+      
+      const { strategies, currentProjectId } = get();
+
+      
+      const payload = strategies;
+
+      let response = null;
+      if (currentProjectId) {
+        // Update existing project
+        response = await axios.put(`/api/projects/${currentProjectId}/strategies`, payload);
+      }
+      
+      set({
+        loading: false,
+      });
+      
+      return response.data;
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const err = error as any;

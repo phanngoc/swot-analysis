@@ -48,7 +48,7 @@ export default function Strategies() {
   const analysis = useSWOTStore(state => state.analysis);
   const project = useSWOTStore(state => state.project);
   const generateStrategies = useSWOTStore(state => state.generateStrategies);
-  const saveProject = useSWOTStore(state => state.saveProject);
+  const saveProjectStrategy = useSWOTStore(state => state.saveProjectStrategy);
   const loading = useSWOTStore(state => state.loading);
   const error = useSWOTStore(state => state.error);
   const projectId = useSWOTStore(state => state.currentProjectId);
@@ -72,7 +72,7 @@ export default function Strategies() {
       if (!projectId) {
         throw new Error("Project ID is not available. Cannot save.");
       }
-      await saveProject(projectId); // Pass projectId to saveProject
+      await saveProjectStrategy(); // Pass projectId to saveProject
       
       // Show success notification
       alert(`Project saved successfully! ID: ${projectId}`);
