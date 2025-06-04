@@ -55,9 +55,9 @@ export type SWOTActions = {
   removeItem: (id: string) => void;
   moveItem: (id: string, from: keyof SWOTAnalysis, to: keyof SWOTAnalysis) => void;
   setStrategies: (strategies: { so: string[]; wo: string[]; st: string[]; wt: string[] }) => void;
-  generateAnalysis: () => Promise<void>;
+  generateAnalysis: () => Promise<string | null | void>;
   generateStrategies: () => Promise<void>;
-  saveProject: (projectId?: string) => Promise<void>;
+  saveProject: (projectId?: string) => Promise<string | null>;
   loadProject: (id: string) => Promise<void>;
   resetState: () => void;
 };
@@ -257,8 +257,17 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
       console.log("SWOT analysis response:", response.data);
       set({
         analysis: response.data,
-        loading: false,
       });
+
+      // Auto-save the project after successful analysis
+      const store = get();
+      if (!store.currentProjectId && !store.project.id) {
+        const projectId = await store.saveProject();
+        return projectId;
+      }
+      
+      set({ loading: false });
+      return store.currentProjectId || store.project.id;
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const err = error as any;
@@ -280,6 +289,7 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
         error: errorMessage,
         errorType
       });
+      throw error;
     }
   },
 
@@ -362,7 +372,7 @@ const useSWOTStore = create<SWOTState & SWOTActions>((set, get) => ({
         });
         
         handleError(new Error('Validation failed'), 'Vui lòng điền đầy đủ thông tin dự án trước khi lưu.');
-        return;
+        return null;
       }
       
       const projectData = {

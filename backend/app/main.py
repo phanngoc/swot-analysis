@@ -99,6 +99,12 @@ class SWOTStrategiesResponse(BaseModel):
     st: List[str]
     wt: List[str]
 
+class ProjectStrategiesUpdateRequest(BaseModel):
+    so: Union[List[str], Dict[str, str]]
+    wo: Union[List[str], Dict[str, str]]
+    st: Union[List[str], Dict[str, str]]
+    wt: Union[List[str], Dict[str, str]]
+
 class ProjectFullResponse(BaseModel):
     project: ProjectRead
     analysis: SWOTAnalysisResponse
@@ -205,64 +211,58 @@ def generate_swot_strategies(analysis: Dict[str, List[Dict[str, Any]]]) -> Union
     """Generate SWOT strategies based on the analysis"""
     llm = init_llm()
     
-    # Define the prompt template
     template = """
-    Bạn là một chuyên gia chiến lược kinh doanh. Dựa trên bản phân tích SWOT dưới đây, hãy đề xuất các chiến lược phù hợp theo 4 nhóm sau:
-
-    1. **Chiến lược SO (Strength - Opportunity)**: Tận dụng điểm mạnh để khai thác cơ hội
-    2. **Chiến lược WO (Weakness - Opportunity)**: Cải thiện điểm yếu để tận dụng cơ hội
-    3. **Chiến lược ST (Strength - Threat)**: Dùng điểm mạnh để giảm thiểu rủi ro/thách thức
-    4. **Chiến lược WT (Weakness - Threat)**: Khắc phục điểm yếu để tránh rủi ro/thách thức
-
-    **Phân tích SWOT:**
-    - Điểm mạnh (Strengths): {strengths}
-    - Điểm yếu (Weaknesses): {weaknesses}
-    - Cơ hội (Opportunities): {opportunities}
-    - Thách thức (Threats): {threats}
-
-    **Yêu cầu đầu ra:**
-    - Với mỗi nhóm chiến lược (SO, WO, ST, WT), đề xuất từ 2 đến 3 chiến lược cụ thể và có thể hành động.
-    - Trình bày kết quả dưới dạng JSON với cấu trúc sau:
-
+    You are an expert business strategist. Based on the SWOT analysis below, generate strategic recommendations
+    in these four categories:
+    
+    1. SO (Strength-Opportunity) strategies: Using strengths to capitalize on opportunities
+    2. WO (Weakness-Opportunity) strategies: Improving weaknesses to better capture opportunities
+    3. ST (Strength-Threat) strategies: Using strengths to mitigate threats
+    4. WT (Weakness-Threat) strategies: Addressing weaknesses to avoid threats
+    
+    SWOT Analysis:
+    Strengths: {strengths}
+    Weaknesses: {weaknesses}
+    Opportunities: {opportunities}
+    Threats: {threats}
+    
+    For each category (SO, WO, ST, WT), provide 2-3 specific, actionable strategies.
+    Format your response as a JSON with this structure:
     {{
-        "so": ["Chiến lược 1", "Chiến lược 2", "Chiến lược 3"],
-        "wo": ["Chiến lược 1", "Chiến lược 2", "Chiến lược 3"],
-        "st": ["Chiến lược 1", "Chiến lược 2", "Chiến lược 3"],
-        "wt": ["Chiến lược 1", "Chiến lược 2", "Chiến lược 3"]
+        "so": ["Strategy 1", "Strategy 2", "Strategy 3"],
+        "wo": ["Strategy 1", "Strategy 2", "Strategy 3"],
+        "st": ["Strategy 1", "Strategy 2", "Strategy 3"],
+        "wt": ["Strategy 1", "Strategy 2", "Strategy 3"]
     }}
-
-    **Lưu ý:**
-    - Các chiến lược phải cụ thể, dễ triển khai và có liên quan chặt chẽ đến các yếu tố SWOT đã đưa ra.
-
+    
+    Ensure all strategies are specific, actionable, and directly related to the SWOT elements.
     """
     
-    prompt = ChatPromptTemplate.from_template(template)
+    prompt_template = ChatPromptTemplate.from_messages(
+        [
+            ("system", template),
+            ("human", "Respond with vietnamese, do not use code block markers"),
+        ]
+    )
     
+    chain = prompt_template | llm | StrOutputParser()
+
     # Extract the content from each category for better prompt formatting
     strengths = [item["content"] for item in analysis.get("strengths", [])]
     weaknesses = [item["content"] for item in analysis.get("weaknesses", [])]
     opportunities = [item["content"] for item in analysis.get("opportunities", [])]
     threats = [item["content"] for item in analysis.get("threats", [])]
-    
-    # Create the chain
-    chain = (
-        {"strengths": lambda x: ", ".join(x),
-         "weaknesses": lambda x: ", ".join(x),
-         "opportunities": lambda x: ", ".join(x),
-         "threats": lambda x: ", ".join(x)}
-        | prompt
-        | llm
-        | StrOutputParser()
-    )
-    
+
     # Execute chain
     try:
-        result = chain.invoke({
-            "strengths": strengths,
-            "weaknesses": weaknesses,
-            "opportunities": opportunities,
-            "threats": threats
-        })
+        result = chain.invoke(
+            {
+                "strengths": strengths,
+                "weaknesses": weaknesses,
+                "opportunities": opportunities,
+                "threats": threats
+            }
+        )
         # Remove any leading/trailing whitespace and trim code block markers if present
         result = result.strip()
         if result.startswith("```json"):
@@ -492,3 +492,40 @@ def delete_project(project_id: str, session: Session = Depends(get_session)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error deleting project: {str(e)}"
         )
+
+@app.put("/api/projects/{project_id}/strategies", response_model=SWOTStrategiesResponse)
+def update_project_strategies(project_id: str, strategies: ProjectStrategiesUpdateRequest, session: Session = Depends(get_session)):
+    """Update strategies for a specific project"""
+    try:
+        # Fetch the project
+        project = session.get(Project, project_id)
+        if not project:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+        # Delete existing strategies for the project
+        strategies_to_delete = session.exec(select(Strategy).where(Strategy.project_id == project_id)).all()
+        for strategy_item in strategies_to_delete:
+            session.delete(strategy_item)
+        strategy_data = strategies.model_dump()
+        print("strategy_data:", strategy_data)
+        # Normalize and add new strategies
+        for strategy_type in ["so", "wo", "st", "wt"]:
+            strategy_list = strategy_data.get(strategy_type, [])
+            for content in strategy_list:
+                if content.strip():  # Only add non-empty strategies
+                    strategy = Strategy(content=content, type=strategy_type, project_id=project_id)
+                    session.add(strategy)
+
+        session.commit()
+
+        # Return the normalized strategies
+        return SWOTStrategiesResponse(
+            so=strategy_data.get("so", []),
+            wo=strategy_data.get("wo", []),
+            st=strategy_data.get("st", []),
+            wt=strategy_data.get("wt", [])
+        )
+
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

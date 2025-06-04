@@ -13,7 +13,7 @@ import Layout from '@/components/Layout';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 
 export default function AnalysisPage() {
-  const { analysis, project, loadProject, resetState, generateAnalysis, loading } = useSWOTWithToast();
+  const { analysis, project, loadProject, generateAnalysis, loading } = useSWOTWithToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<string>("input");
@@ -57,8 +57,19 @@ export default function AnalysisPage() {
   const handleSubmitForm = async () => {
     try {
       // Call the API to generate SWOT analysis
-      await generateAnalysis();
-      setActiveTab('matrix');
+      const resultProjectId = await generateAnalysis();
+      
+      // After successful analysis, navigate to strategies page
+      if (resultProjectId) {
+        router.push(`/projects/${resultProjectId}/strategies`);
+      } else if (projectId) {
+        router.push(`/projects/${projectId}/strategies`);
+      } else if (project?.id) {
+        router.push(`/projects/${project.id}/strategies`);
+      } else {
+        // If no project ID, switch to matrix tab first
+        setActiveTab('matrix');
+      }
     } catch (error) {
       console.error("Error generating SWOT analysis:", error);
     }

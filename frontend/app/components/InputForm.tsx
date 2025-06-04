@@ -12,7 +12,7 @@ import { useSWOTWithToast } from './hooks/use-swot-with-toast';
 
 export default function InputForm({ onSubmit }: { onSubmit: () => void }) {
   const [goal, setGoal] = useState('');
-  const { project, setProject } = useSWOTWithToast();
+  const { project, setProject, loading } = useSWOTWithToast();
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -180,11 +180,18 @@ export default function InputForm({ onSubmit }: { onSubmit: () => void }) {
         <CardFooter className="flex justify-between">
             <Button 
             type="submit" 
-            disabled={!project.title || !project.description}
+            disabled={!project.title || !project.description || loading}
             variant="default"
-            className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-medium px-6 py-2 rounded"
+            className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-medium px-6 py-2 rounded disabled:opacity-50"
             >
-            Phân tích SWOT
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Đang phân tích...
+              </>
+            ) : (
+              'Phân tích SWOT'
+            )}
             </Button>
         </CardFooter>
       </Card>

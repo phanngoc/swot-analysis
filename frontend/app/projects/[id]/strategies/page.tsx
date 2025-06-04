@@ -1,28 +1,20 @@
-'''
 'use client';
 
 import StrategiesComponent from '@/app/components/Strategies';
-import { useSWOTStore } from '@/app/store/swot-store';
+import useSWOTStore from '@/app/store/swot-store';
 import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Breadcrumbs from '@/app/components/Breadcrumbs'; // Make sure this component exists and path is correct
+import { Breadcrumbs } from '@/app/components/Breadcrumbs'; // Make sure this component exists and path is correct
 
 export default function ProjectStrategiesPage() {
   const params = useParams();
   const router = useRouter();
   const projectId = params.id as string;
 
-  const {
-    loadProject,
-    project,
-    isLoading,
-    error
-  } = useSWOTStore(state => ({
-    loadProject: state.loadProject,
-    project: state.project,
-    isLoading: state.loading,
-    error: state.error,
-  }));
+  const loadProject = useSWOTStore(state => state.loadProject);
+  const project = useSWOTStore(state => state.project);
+  const isLoading = useSWOTStore(state => state.loading);
+  const error = useSWOTStore(state => state.error);
 
   useEffect(() => {
     if (projectId) {
@@ -76,4 +68,3 @@ export default function ProjectStrategiesPage() {
     </div>
   );
 }
-'''

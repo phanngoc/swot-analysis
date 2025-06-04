@@ -11,27 +11,15 @@ export const useSWOTWithToast = () => {
       const result = await store.saveProject();
 
       if (result) {
-        toast({
-          title: "Thành công",
-          description: "Đã lưu dự án thành công!",
-          variant: "success",
-        });
+        toast("Đã lưu dự án thành công!", "success");
       } else if (store.error) {
-        toast({
-          title: "Có lỗi xảy ra",
-          description: store.error,
-          variant: "destructive",
-        });
+        toast(store.error, "destructive");
       }
 
       return result;
     } catch (error) {
       console.error('Error in saveProject:', error);
-      toast({
-        title: "Có lỗi xảy ra",
-        description: "Không thể lưu dự án. Vui lòng thử lại.",
-        variant: "destructive",
-      });
+      toast("Không thể lưu dự án. Vui lòng thử lại.", "destructive");
       return null;
     }
   }, [store, toast]);
@@ -40,39 +28,25 @@ export const useSWOTWithToast = () => {
     try {
       await store.loadProject(id);
       if (store.error) {
-        toast({
-          title: "Có lỗi xảy ra",
-          description: store.error,
-          variant: "destructive",
-        });
+        toast(store.error, "destructive");
       }
     } catch (error) {
       console.error('Error in loadProject:', error);
-      toast({
-        title: "Có lỗi xảy ra",
-        description: "Không thể tải dự án. Vui lòng thử lại.",
-        variant: "destructive",
-      });
+      toast("Không thể tải dự án. Vui lòng thử lại.", "destructive");
     }
   }, [store, toast]);
 
   const generateAnalysis = useCallback(async () => {
     try {
-      await store.generateAnalysis();
+      const projectId = await store.generateAnalysis();
       if (store.error) {
-        toast({
-          title: "Có lỗi xảy ra",
-          description: store.error,
-          variant: "destructive",
-        });
+        toast(store.error, "destructive");
       }
+      return projectId;
     } catch (error) {
       console.error('Error in generateAnalysis:', error);
-      toast({
-        title: "Có lỗi xảy ra",
-        description: "Không thể tạo phân tích SWOT. Vui lòng thử lại.",
-        variant: "destructive",
-      });
+      toast("Không thể tạo phân tích SWOT. Vui lòng thử lại.", "destructive");
+      throw error;
     }
   }, [store, toast]);
 
@@ -80,19 +54,11 @@ export const useSWOTWithToast = () => {
     try {
       await store.generateStrategies();
       if (store.error) {
-        toast({
-          title: "Có lỗi xảy ra",
-          description: store.error,
-          variant: "destructive",
-        });
+        toast(store.error, "destructive");
       }
     } catch (error) {
       console.error('Error in generateStrategies:', error);
-      toast({
-        title: "Có lỗi xảy ra",
-        description: "Không thể tạo chiến lược. Vui lòng thử lại.",
-        variant: "destructive",
-      });
+      toast("Không thể tạo chiến lược. Vui lòng thử lại.", "destructive");
     }
   }, [store, toast]);
 
