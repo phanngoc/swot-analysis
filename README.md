@@ -2,7 +2,9 @@
 
 An interactive web application for SWOT (Strengths, Weaknesses, Opportunities, Threats) analysis powered by AI. This tool helps businesses, entrepreneurs, and project managers analyze their strategic position and make informed decisions.
 
-![GitHub Repo stars](./screenshot.png)
+![Enter project](./screen3.png)
+
+![Matrix swot](./screen2.png)
 
 ## Features
 
@@ -18,22 +20,23 @@ The fastest way to get started is using Docker:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/swot-analyzer.git
+git clone https://github.com/phanngoc/swot-analyzer.git
 cd swot-analyzer
-
-# Run setup script to configure environment
-chmod +x setup.sh
-./setup.sh
 
 # Follow the prompts to add your OpenAI API key
 
 # Start the application
-docker-compose up
+docker-compose up -d db
 ```
 
 Visit http://localhost:3000 in your browser to use the application!
 
 ## Tech Stack
+### Prerequisites
+- Node.js (v18+)
+- Python (v3.9+)
+- PostgreSQL database
+- OpenAI API key
 
 ### Frontend
 - Next.js 14 + TypeScript
@@ -47,38 +50,6 @@ Visit http://localhost:3000 in your browser to use the application!
 - SQLModel for database ORM
 - PostgreSQL database
 - OpenAI integration via LangChain for AI analysis
-
-## Data Flow
-
-1. User submits project information in the frontend
-2. Frontend calls its API route (`/api/swot-analyze`)
-3. Frontend API route forwards the request to the Python backend
-4. Python backend uses LangChain and OpenAI to generate the SWOT analysis
-5. Results flow back to the frontend
-6. Similar flow for strategy generation and project saving
-
-## API Routes
-
-### Frontend API Routes (Next.js)
-- `/api/swot-analyze` - Generate SWOT analysis
-- `/api/swot-strategies` - Generate strategies based on SWOT analysis
-- `/api/projects` - Save or get projects
-- `/api/projects-list` - List all projects
-- `/api/projects/[id]` - Get a specific project
-
-### Backend API Routes (FastAPI)
-- `/api/swot/analyze` - Generate SWOT analysis using AI
-- `/api/swot/strategies` - Generate strategies based on SWOT analysis
-- `/api/projects` - Create or list projects
-- `/api/projects/{project_id}` - Get a specific project
-
-## Getting Started
-
-### Prerequisites
-- Node.js (v18+)
-- Python (v3.9+)
-- PostgreSQL database
-- OpenAI API key
 
 ### Environment Variables
 
@@ -111,61 +82,6 @@ NEXT_PUBLIC_API_URL=http://backend:8000
 - Python (3.10+)
 - PostgreSQL
 - Docker and Docker Compose (optional)
-
-### Setup
-
-#### Using Docker (recommended)
-
-1. Clone the repository
-   ```bash
-   git clone https://github.com/yourusername/swot-analyzer.git
-   cd swot-analyzer
-   ```
-
-2. Create a `.env` file in the root directory with your OpenAI API key
-   ```
-   OPENAI_API_KEY=your-openai-api-key
-   ```
-
-3. Start the application using Docker Compose
-   ```bash
-   docker-compose up
-   ```
-
-4. Access the application
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:8000
-   - API Documentation: http://localhost:8000/docs
-
-#### Manual Setup
-
-1. Clone the repository
-   ```bash
-   git clone https://github.com/yourusername/swot-analyzer.git
-   cd swot-analyzer
-   ```
-
-2. Set up the frontend
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
-
-3. Set up the backend
-   ```bash
-   cd backend
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   cp .env.example .env
-   # Edit .env with your OpenAI API key and database URL
-   python main.py
-   ```
-
-4. Set up the PostgreSQL database
-   - Create a database named `swot`
-   - Update the connection string in `.env` if needed
 
 ## Contributing
 
