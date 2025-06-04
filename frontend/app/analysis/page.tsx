@@ -66,11 +66,11 @@ export default function AnalysisPage() {
       
       // After successful analysis, navigate to strategies page
       if (resultProjectId) {
-        router.push(`/projects/${resultProjectId}/strategies`);
+        router.push(`/projects/${resultProjectId}/analysis`);
       } else if (projectId) {
-        router.push(`/projects/${projectId}/strategies`);
+        router.push(`/projects/${projectId}/analysis`);
       } else if (project?.id) {
-        router.push(`/projects/${project.id}/strategies`);
+        router.push(`/projects/${project.id}/analysis`);
       } else {
         // If no project ID, switch to matrix tab first
         setActiveTab('matrix');
